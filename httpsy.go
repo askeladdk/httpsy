@@ -185,7 +185,6 @@ func StripPrefix(prefix string, h http.Handler) http.Handler {
 // Pong responds with HTTP 204 no content.
 // Use it to implement healthcheck endpoints.
 func Pong(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Length", "0")
 	w.WriteHeader(http.StatusNoContent)
 }
 
