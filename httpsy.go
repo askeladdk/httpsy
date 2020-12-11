@@ -62,13 +62,13 @@ func (f ErrorHandlerFunc) HandleError(w http.ResponseWriter, r *http.Request, st
 	f(w, r, statusCode, err)
 }
 
-// TextErrorHandler responds with the status code and error string in plain text.
-func TextErrorHandler(w http.ResponseWriter, r *http.Request, statusCode int, err error) {
+// TextError responds with the status code and error string in plain text.
+func TextError(w http.ResponseWriter, r *http.Request, statusCode int, err error) {
 	http.Error(w, err.Error(), statusCode)
 }
 
-// JSONErrorHandler replies to the request with the specified error message and HTTP code.
-func JSONErrorHandler(w http.ResponseWriter, r *http.Request, statusCode int, err error) {
+// JSONError replies to the request with the specified error message and HTTP code.
+func JSONError(w http.ResponseWriter, r *http.Request, statusCode int, err error) {
 	response := struct {
 		Message string `json:"message"`
 		Status  int    `json:"status"`
@@ -79,7 +79,7 @@ func JSONErrorHandler(w http.ResponseWriter, r *http.Request, statusCode int, er
 // Error replies to the request with the specified error message and HTTP code.
 // It will use the error handler set with SetErrorHandler, otherwise it defaults to TextError.
 func Error(w http.ResponseWriter, r *http.Request, statusCode int, err error) {
-	var errorHandler ErrorHandler = ErrorHandlerFunc(TextErrorHandler)
+	var errorHandler ErrorHandler = ErrorHandlerFunc(TextError)
 	if h, ok := GetContextValue(r, keyErrorHandler).(ErrorHandler); ok {
 		errorHandler = h
 	}

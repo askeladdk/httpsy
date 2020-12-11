@@ -126,7 +126,7 @@ func TestSetErrorHandlerPanic(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	x := Chain(SetErrorHandler(ErrorHandlerFunc(JSONErrorHandler)), Recoverer).Handler(endpoint)
+	x := Chain(SetErrorHandler(ErrorHandlerFunc(JSONError)), Recoverer).Handler(endpoint)
 	x.ServeHTTP(w, r)
 
 	s := w.Body.String()

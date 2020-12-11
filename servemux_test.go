@@ -43,7 +43,7 @@ func TestServeMux(t *testing.T) {
 
 func TestServeMux404(t *testing.T) {
 	mux := NewServeMux()
-	mux.Use(SetErrorHandler(JSONErrorHandler))
+	mux.Use(SetErrorHandler(JSONError))
 	mux.Route("/test/", func(mux *ServeMux) {
 	})
 	w := httptest.NewRecorder()
