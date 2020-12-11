@@ -22,9 +22,9 @@ const (
 	ifaceReaderFrom
 )
 
-// Tracer exposes hooks into the ResponseWriter.
-type Tracer interface {
-	// Write is called whenever the response body is written to,
+// ServerTracer exposes hooks into the ResponseWriter.
+type ServerTracer interface {
+	// Write is called whenever the ResponseWriter is written to,
 	// either directly by Write or via the io.ReaderFrom interface.
 	Write(w io.Writer, p []byte) (int, error)
 
@@ -43,7 +43,7 @@ type Tracer interface {
 
 type responseWriterTracer struct {
 	http.ResponseWriter
-	tracer      Tracer
+	tracer      ServerTracer
 	wroteHeader int32
 }
 
@@ -117,15 +117,15 @@ func (t readerFromProxy) ReadFrom(r io.Reader) (int64, error) {
 	return t.w.readFrom(r)
 }
 
-// Hook hooks the Tracer into the ResponseWriter.
+// Hook hooks the ServerTracer into the ResponseWriter.
 // Any calls to the ResponseWriter or its optional interfaces
 // CloseNotifier, Flusher, Hijacker, Pusher, and ReaderFrom
-// will go through the Tracer.
+// will go through the ServerTracer.
 //
 // CloseNotifier and ReaderFrom are not exposed directly.
 // CloseNotifier is deprecated and is not useful to hook into.
-// ReaderFrom transparently writes to the Tracer and does not need to be exposed.
-func Hook(w http.ResponseWriter, tracer Tracer) http.ResponseWriter {
+// ReaderFrom transparently writes to the ServerTracer and does not need to be exposed.
+func Hook(w http.ResponseWriter, tracer ServerTracer) http.ResponseWriter {
 	var (
 		closeNotifier http.CloseNotifier // 00001
 		flusher       http.Flusher       // 00010
@@ -378,7 +378,7 @@ func Unwrap(w http.ResponseWriter) http.ResponseWriter {
 	return w
 }
 
-// Metrics implements Tracer and collects basic metrics.
+// Metrics implements ServerTracer and collects basic metrics.
 // Its behaviour can be extended by embedding it in another struct.
 type Metrics struct {
 	// Header is the response header.
@@ -394,30 +394,30 @@ type Metrics struct {
 	Start time.Time
 }
 
-// WriteHeader implements Tracer.
+// WriteHeader implements ServerTracer.
 func (t *Metrics) WriteHeader(w http.ResponseWriter, statusCode int) {
 	t.Header = w.Header()
 	t.StatusCode = statusCode
 	w.WriteHeader(statusCode)
 }
 
-// Write implements Tracer.
+// Write implements ServerTracer.
 func (t *Metrics) Write(w io.Writer, p []byte) (int, error) {
 	t.BytesWritten += int64(len(p))
 	return w.Write(p)
 }
 
-// Flush implements Tracer. It invokes flusher.
+// Flush implements ServerTracer.
 func (t Metrics) Flush(flusher http.Flusher) {
 	flusher.Flush()
 }
 
-// Hijack implements Tracer. It invokes hijacker and passes its return values.
+// Hijack implements ServerTracer.
 func (t Metrics) Hijack(hijacker http.Hijacker) (net.Conn, *bufio.ReadWriter, error) {
 	return hijacker.Hijack()
 }
 
-// Push implements Tracer. It invokes pusher and passes its return values.
+// Push implements ServerTracer.
 func (t Metrics) Push(pusher http.Pusher, target string, opts *http.PushOptions) error {
 	return pusher.Push(target, opts)
 }
