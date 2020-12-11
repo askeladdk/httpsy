@@ -1,6 +1,8 @@
-// Package httpsytrace provides an interface to capture HTTP response metrics
+// Package httpsytrace provides an interface to hook into calls made
+// to ResponseWriter. It can be used to capture HTTP response metrics
 // such as response time, bytes written and status code from your
 // application's middleware.
+// It is the server-side equivalent of net/http/httptrace.
 package httpsytrace
 
 import (
@@ -22,10 +24,15 @@ const (
 
 // Tracer exposes hooks into the ResponseWriter.
 type Tracer interface {
-	io.Writer
+	// Write is called whenever the response body is written to,
+	// either directly by Write or via the io.ReaderFrom interface.
+	Write(w io.Writer, p []byte) (int, error)
 
 	// WriteHeader is called once when the status line and headers are written.
 	WriteHeader(w http.ResponseWriter, statusCode int)
+
+	// Flush is called when the http.Flusher interface is invoked.
+	Flush(flusher http.Flusher)
 
 	// Hijack is called when the Hijacker interface is invoked.
 	Hijack(hijacker http.Hijacker) (net.Conn, *bufio.ReadWriter, error)
@@ -48,16 +55,12 @@ func (w *responseWriterTracer) WriteHeader(statusCode int) {
 
 func (w *responseWriterTracer) Write(p []byte) (int, error) {
 	w.WriteHeader(http.StatusOK)
-	n, err := w.ResponseWriter.Write(p)
-	if err == nil {
-		_, _ = w.tracer.Write(p)
-	}
-	return n, err
+	return w.tracer.Write(w.ResponseWriter, p)
 }
 
 func (w *responseWriterTracer) flush() {
 	w.WriteHeader(http.StatusOK)
-	w.ResponseWriter.(http.Flusher).Flush()
+	w.tracer.Flush(w.ResponseWriter.(http.Flusher))
 }
 
 func (w *responseWriterTracer) hijack() (net.Conn, *bufio.ReadWriter, error) {
@@ -68,10 +71,27 @@ func (w *responseWriterTracer) push(target string, opts *http.PushOptions) error
 	return w.tracer.Push(w.ResponseWriter.(http.Pusher), target, opts)
 }
 
+type writerFunc func([]byte) (int, error)
+
+func (f writerFunc) Write(p []byte) (int, error) {
+	return f(p)
+}
+
 func (w *responseWriterTracer) readFrom(r io.Reader) (int64, error) {
 	w.WriteHeader(http.StatusOK)
-	tee := io.TeeReader(r, w.tracer)
-	return w.ResponseWriter.(io.ReaderFrom).ReadFrom(tee)
+	pr, pw := io.Pipe()
+	defer pr.Close()
+
+	traceWriter := writerFunc(func(p []byte) (int, error) {
+		return w.tracer.Write(pw, p)
+	})
+
+	go func() {
+		_, err := io.Copy(traceWriter, r)
+		_ = pw.CloseWithError(err)
+	}()
+
+	return w.ResponseWriter.(io.ReaderFrom).ReadFrom(pr)
 }
 
 type (
@@ -102,10 +122,9 @@ func (t readerFromProxy) ReadFrom(r io.Reader) (int64, error) {
 // CloseNotifier, Flusher, Hijacker, Pusher, and ReaderFrom
 // will go through the Tracer.
 //
-// CloseNotifier, Flusher, and ReaderFrom are not exposed directly.
-// CloseNotifier is deprecated and does not convey interesting information.
-// Flusher does not convey interesting information.
-// ReaderFrom writes all reads to the Tracer and does not need to be exposed.
+// CloseNotifier and ReaderFrom are not exposed directly.
+// CloseNotifier is deprecated and is not useful to hook into.
+// ReaderFrom transparently writes to the Tracer and does not need to be exposed.
 func Hook(w http.ResponseWriter, tracer Tracer) http.ResponseWriter {
 	var (
 		closeNotifier http.CloseNotifier // 00001
@@ -382,10 +401,15 @@ func (t *Metrics) WriteHeader(w http.ResponseWriter, statusCode int) {
 	w.WriteHeader(statusCode)
 }
 
-// Write implements io.Writer.
-func (t *Metrics) Write(p []byte) (int, error) {
+// Write implements Tracer.
+func (t *Metrics) Write(w io.Writer, p []byte) (int, error) {
 	t.BytesWritten += int64(len(p))
-	return len(p), nil
+	return w.Write(p)
+}
+
+// Flush implements Tracer. It invokes flusher.
+func (t Metrics) Flush(flusher http.Flusher) {
+	flusher.Flush()
 }
 
 // Hijack implements Tracer. It invokes hijacker and passes its return values.
