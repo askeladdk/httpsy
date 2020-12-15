@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -77,6 +78,10 @@ func (f writerFunc) Write(p []byte) (int, error) {
 	return f(p)
 }
 
+var byteSlicePool = &sync.Pool{
+	New: func() interface{} { return make([]byte, 32*1024) },
+}
+
 func (w *responseWriterTracer) readFrom(r io.Reader) (int64, error) {
 	w.WriteHeader(http.StatusOK)
 	pr, pw := io.Pipe()
@@ -87,7 +92,9 @@ func (w *responseWriterTracer) readFrom(r io.Reader) (int64, error) {
 	})
 
 	go func() {
-		_, err := io.Copy(traceWriter, r)
+		buf := byteSlicePool.Get().([]byte)
+		defer byteSlicePool.Put(buf)
+		_, err := io.CopyBuffer(traceWriter, r, buf)
 		_ = pw.CloseWithError(err)
 	}()
 
