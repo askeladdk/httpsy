@@ -188,8 +188,9 @@ func Pong(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Idempotent returns true if the request method is one of GET, HEAD, OPTIONS, TRACE.
-func Idempotent(r *http.Request) bool {
+// Safe returns true if the request method is one of GET, HEAD, OPTIONS, TRACE.
+// Safe methods can be cached and prefetched without any repercussions or side-effects to the resource.
+func Safe(r *http.Request) bool {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
 		return true

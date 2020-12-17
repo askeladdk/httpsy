@@ -171,7 +171,7 @@ func (csrf CSRF) Handler(next http.Handler) http.Handler {
 }
 
 func (csrf CSRF) exempt(r *http.Request) bool {
-	if Idempotent(r) {
+	if Safe(r) {
 		return true
 	} else if csrf.ExemptFunc != nil {
 		return csrf.ExemptFunc.Predicate(r)
