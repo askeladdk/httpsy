@@ -1,8 +1,11 @@
 // Package httpsytrace provides an interface to hook into calls made
-// to ResponseWriter. It can be used to capture HTTP response metrics
+// to ResponseWriter. It can be used to capture any HTTP response metrics,
 // such as response time, bytes written and status code from your
 // application's middleware.
-// It is the server-side equivalent of net/http/httptrace.
+// It can also be used to implement on-the-fly compression, hashing,
+// or anything else you can think of.
+//
+// Package httpsytrace is the server-side equivalent of net/http/httptrace.
 package httpsytrace
 
 import (
@@ -45,6 +48,10 @@ type responseWriterTracer struct {
 	http.ResponseWriter
 	tracer      ServerTracer
 	wroteHeader int32
+}
+
+func (w *responseWriterTracer) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 func (w *responseWriterTracer) WriteHeader(statusCode int) {
@@ -374,14 +381,18 @@ func Wrap(w http.ResponseWriter, tracer ServerTracer) http.ResponseWriter {
 	}
 }
 
-// Unwrap returns the underlying ResponseWriter.
-// Use it to access possible additional interfaces that are not
-// covered by this package.
-func Unwrap(w http.ResponseWriter) http.ResponseWriter {
-	if x, ok := w.(*responseWriterTracer); ok {
-		return x.ResponseWriter
+// Unwrapper unwraps an underlying http.ResponseWriter.
+type Unwrapper interface {
+	Unwrap() http.ResponseWriter
+}
+
+// Unwrap unwraps an http.ResponseWriter that implements the Unwrapper interface.
+// Use it to access possible additional interfaces that are not covered by this package.
+func Unwrap(w http.ResponseWriter) (http.ResponseWriter, bool) {
+	if x, ok := w.(Unwrapper); ok {
+		return x.Unwrap(), true
 	}
-	return w
+	return w, false
 }
 
 // ServerTrace is a default implementation of ServerTracer.

@@ -107,3 +107,11 @@ func TestReadFrom(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestUnwrap(t *testing.T) {
+	w := httptest.NewRecorder()
+	x := Wrap(w, ServerTrace{})
+	if y, ok := Unwrap(x); y != w || !ok {
+		t.Fatal()
+	}
+}
