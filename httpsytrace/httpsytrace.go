@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 const (
@@ -35,10 +34,10 @@ type ServerTracer interface {
 	// Flush is called when the http.Flusher interface is invoked.
 	Flush(flusher http.Flusher)
 
-	// Hijack is called when the Hijacker interface is invoked.
+	// Hijack is called when the http.Hijacker interface is invoked.
 	Hijack(hijacker http.Hijacker) (net.Conn, *bufio.ReadWriter, error)
 
-	// Push is called when the Pusher interface is invoked.
+	// Push is called when the http.Pusher interface is invoked.
 	Push(pusher http.Pusher, target string, opts *http.PushOptions) error
 }
 
@@ -129,9 +128,9 @@ func (t readerFromProxy) ReadFrom(r io.Reader) (int64, error) {
 // CloseNotifier, Flusher, Hijacker, Pusher, and ReaderFrom
 // will go through the ServerTracer.
 //
-// CloseNotifier and ReaderFrom are not exposed directly.
-// CloseNotifier is deprecated and is not useful to hook into.
-// ReaderFrom transparently writes to the ServerTracer and does not need to be exposed.
+// CloseNotifier and ReaderFrom are not exposed.
+// CloseNotifier is deprecated and therefore not useful to hook into.
+// ReaderFrom transparently calls ServerTracer.Write and does not need to be exposed.
 func Hook(w http.ResponseWriter, tracer ServerTracer) http.ResponseWriter {
 	var (
 		closeNotifier http.CloseNotifier // 00001
@@ -385,51 +384,31 @@ func Unwrap(w http.ResponseWriter) http.ResponseWriter {
 	return w
 }
 
-// Metrics implements ServerTracer and collects basic metrics.
+// ServerTrace is a default implementation of ServerTracer.
 // Its behaviour can be extended by embedding it in another struct.
-type Metrics struct {
-	// Header is the response header.
-	Header http.Header
-
-	// BytesWritten is the total amount of bytes written to the response.
-	BytesWritten int64
-
-	// StatusCode is the HTTP status code of the response.
-	StatusCode int
-
-	// Start is the moment when taking measurements started.
-	Start time.Time
-}
+type ServerTrace struct{}
 
 // WriteHeader implements ServerTracer.
-func (t *Metrics) WriteHeader(w http.ResponseWriter, statusCode int) {
-	t.Header = w.Header()
-	t.StatusCode = statusCode
+func (st ServerTrace) WriteHeader(w http.ResponseWriter, statusCode int) {
 	w.WriteHeader(statusCode)
 }
 
 // Write implements ServerTracer.
-func (t *Metrics) Write(w io.Writer, p []byte) (int, error) {
-	t.BytesWritten += int64(len(p))
+func (st ServerTrace) Write(w io.Writer, p []byte) (int, error) {
 	return w.Write(p)
 }
 
 // Flush implements ServerTracer.
-func (t Metrics) Flush(flusher http.Flusher) {
+func (st ServerTrace) Flush(flusher http.Flusher) {
 	flusher.Flush()
 }
 
 // Hijack implements ServerTracer.
-func (t Metrics) Hijack(hijacker http.Hijacker) (net.Conn, *bufio.ReadWriter, error) {
+func (st ServerTrace) Hijack(hijacker http.Hijacker) (net.Conn, *bufio.ReadWriter, error) {
 	return hijacker.Hijack()
 }
 
 // Push implements ServerTracer.
-func (t Metrics) Push(pusher http.Pusher, target string, opts *http.PushOptions) error {
+func (st ServerTrace) Push(pusher http.Pusher, target string, opts *http.PushOptions) error {
 	return pusher.Push(target, opts)
-}
-
-// Duration is the amount of time that has elapsed since Start.
-func (t Metrics) Duration() time.Duration {
-	return time.Since(t.Start)
 }

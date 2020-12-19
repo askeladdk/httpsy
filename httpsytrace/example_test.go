@@ -2,28 +2,45 @@ package httpsytrace_test
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/askeladdk/httpsy"
 	"github.com/askeladdk/httpsy/httpsytrace"
 )
+
+type metrics struct {
+	httpsytrace.ServerTrace
+	BytesWritten int64
+	StatusCode   int
+}
+
+func (m *metrics) WriteHeader(w http.ResponseWriter, statusCode int) {
+	m.StatusCode = statusCode
+	m.ServerTrace.WriteHeader(w, statusCode)
+}
+
+func (m *metrics) Write(w io.Writer, p []byte) (int, error) {
+	m.BytesWritten += int64(len(p))
+	return m.ServerTrace.Write(w, p)
+}
 
 // Create a logger middleware to log all requests and their metrics.
 func Example_logging() {
 	logger := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			m := httpsytrace.Metrics{}
+			m := metrics{}
 			next.ServeHTTP(httpsytrace.Hook(w, &m), r)
 			fmt.Printf("%s %s %d %d\n", r.Method, r.URL, m.StatusCode, m.BytesWritten)
 		})
 	}
 
-	mux := httpsy.NewServeMux()
-	mux.Use(logger)
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Hello, world!")
 	})
+
+	mux := http.NewServeMux()
+	mux.Handle("/", logger(endpoint))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)

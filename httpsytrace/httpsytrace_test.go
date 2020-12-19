@@ -1,26 +1,38 @@
 package httpsytrace
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 )
 
-func testTracer(status, written *int) func(http.Handler) http.Handler {
+type metrics struct {
+	ServerTrace
+	BytesWritten int64
+	StatusCode   int
+}
+
+func (m *metrics) WriteHeader(w http.ResponseWriter, statusCode int) {
+	m.StatusCode = statusCode
+	m.ServerTrace.WriteHeader(w, statusCode)
+}
+
+func (m *metrics) Write(w io.Writer, p []byte) (int, error) {
+	m.BytesWritten += int64(len(p))
+	return m.ServerTrace.Write(w, p)
+}
+
+func metricsMiddleware(status, written *int) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			m := Metrics{}
-			m.Start = time.Now()
+			m := metrics{}
 			next.ServeHTTP(Hook(w, &m), r)
-			fmt.Printf("%s %s %d %d %v\n", r.Method, r.URL, m.StatusCode, m.BytesWritten, m.Duration())
+			fmt.Printf("%s %s %d %d\n", r.Method, r.URL, m.StatusCode, m.BytesWritten)
 			*status = m.StatusCode
 			*written = int(m.BytesWritten)
 		})
@@ -37,36 +49,21 @@ func TestMetricsTrace(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
 	var status, written int
-	x := testTracer(&status, &written)(http.HandlerFunc(endpoint))
+	x := metricsMiddleware(&status, &written)(http.HandlerFunc(endpoint))
 	x.ServeHTTP(w, r)
 	if status != 201 || status != w.Code || written != w.Body.Len() {
 		t.Fatal()
 	}
 }
 
-type writeTracerFunc func([]byte) (int, error)
+type writeTracer struct {
+	ServerTrace
+	w io.Writer
+}
 
-func (f writeTracerFunc) Write(w io.Writer, p []byte) (int, error) {
-	if n, err := f(p); err != nil {
-		return n, err
-	}
+func (wt writeTracer) Write(w io.Writer, p []byte) (int, error) {
+	_, _ = wt.w.Write(p)
 	return w.Write(p)
-}
-
-func (f writeTracerFunc) WriteHeader(w http.ResponseWriter, statusCode int) {
-	w.WriteHeader(statusCode)
-}
-
-func (f writeTracerFunc) Flush(flusher http.Flusher) {
-	flusher.Flush()
-}
-
-func (f writeTracerFunc) Hijack(hijacker http.Hijacker) (net.Conn, *bufio.ReadWriter, error) {
-	return hijacker.Hijack()
-}
-
-func (f writeTracerFunc) Push(pusher http.Pusher, target string, opts *http.PushOptions) error {
-	return pusher.Push(target, opts)
 }
 
 type mockReadFromRecorder struct {
@@ -90,7 +87,7 @@ func TestReadFrom(t *testing.T) {
 	tracer := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := md5.New()
-			next.ServeHTTP(Hook(w, writeTracerFunc(h.Write)), r)
+			next.ServeHTTP(Hook(w, writeTracer{w: h}), r)
 			got = hex.EncodeToString(h.Sum(nil))
 		})
 	}
