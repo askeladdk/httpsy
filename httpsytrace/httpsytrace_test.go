@@ -31,7 +31,7 @@ func metricsMiddleware(status, written *int) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			m := metrics{}
-			next.ServeHTTP(Hook(w, &m), r)
+			next.ServeHTTP(Wrap(w, &m), r)
 			fmt.Printf("%s %s %d %d\n", r.Method, r.URL, m.StatusCode, m.BytesWritten)
 			*status = m.StatusCode
 			*written = int(m.BytesWritten)
@@ -87,7 +87,7 @@ func TestReadFrom(t *testing.T) {
 	tracer := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := md5.New()
-			next.ServeHTTP(Hook(w, writeTracer{w: h}), r)
+			next.ServeHTTP(Wrap(w, writeTracer{w: h}), r)
 			got = hex.EncodeToString(h.Sum(nil))
 		})
 	}

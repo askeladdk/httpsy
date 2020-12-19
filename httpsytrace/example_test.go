@@ -30,7 +30,7 @@ func Example_logging() {
 	logger := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			m := metrics{}
-			next.ServeHTTP(httpsytrace.Hook(w, &m), r)
+			next.ServeHTTP(httpsytrace.Wrap(w, &m), r)
 			fmt.Printf("%s %s %d %d\n", r.Method, r.URL, m.StatusCode, m.BytesWritten)
 		})
 	}

@@ -123,7 +123,7 @@ func (t readerFromProxy) ReadFrom(r io.Reader) (int64, error) {
 	return t.w.readFrom(r)
 }
 
-// Hook hooks the ServerTracer into the ResponseWriter.
+// Wrap hooks the ServerTracer into the ResponseWriter.
 // Any calls to the ResponseWriter or its optional interfaces
 // CloseNotifier, Flusher, Hijacker, Pusher, and ReaderFrom
 // will go through the ServerTracer.
@@ -131,7 +131,7 @@ func (t readerFromProxy) ReadFrom(r io.Reader) (int64, error) {
 // CloseNotifier and ReaderFrom are not exposed.
 // CloseNotifier is deprecated and therefore not useful to hook into.
 // ReaderFrom transparently calls ServerTracer.Write and does not need to be exposed.
-func Hook(w http.ResponseWriter, tracer ServerTracer) http.ResponseWriter {
+func Wrap(w http.ResponseWriter, tracer ServerTracer) http.ResponseWriter {
 	var (
 		closeNotifier http.CloseNotifier // 00001
 		flusher       http.Flusher       // 00010
