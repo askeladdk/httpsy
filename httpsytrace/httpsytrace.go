@@ -18,14 +18,6 @@ import (
 	"sync/atomic"
 )
 
-const (
-	ifaceCloseNotifier = 1 << iota
-	ifaceFlusher
-	ifaceHijacker
-	ifacePusher
-	ifaceReaderFrom
-)
-
 // ServerTracer exposes hooks into the ResponseWriter.
 type ServerTracer interface {
 	// Write is called whenever the ResponseWriter is written to,
@@ -71,17 +63,21 @@ func (w *responseWriterTracer) Write(p []byte) (int, error) {
 	return w.tracer.Write(w.ResponseWriter, p)
 }
 
-func (w *responseWriterTracer) flush() {
+func (w *responseWriterTracer) Flush() {
 	w.WriteHeader(http.StatusOK)
 	w.tracer.Flush(w.ResponseWriter.(http.Flusher))
 }
 
-func (w *responseWriterTracer) hijack() (net.Conn, *bufio.ReadWriter, error) {
+func (w *responseWriterTracer) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.tracer.Hijack(w.ResponseWriter.(http.Hijacker))
 }
 
-func (w *responseWriterTracer) push(target string, opts *http.PushOptions) error {
+func (w *responseWriterTracer) Push(target string, opts *http.PushOptions) error {
 	return w.tracer.Push(w.ResponseWriter.(http.Pusher), target, opts)
+}
+
+func (w *responseWriterTracer) CloseNotify() <-chan bool {
+	return w.ResponseWriter.(http.CloseNotifier).CloseNotify()
 }
 
 func srcIsRegularFile(src io.Reader) (isRegular bool, err error) {
@@ -111,7 +107,7 @@ var byteSlicePool = &sync.Pool{
 	New: func() interface{} { return make([]byte, 32*1024) },
 }
 
-func (w *responseWriterTracer) readFrom(r io.Reader) (int64, error) {
+func (w *responseWriterTracer) ReadFrom(r io.Reader) (int64, error) {
 	regular, err := srcIsRegularFile(r)
 	if err != nil {
 		return 0, err
@@ -133,29 +129,6 @@ func (w *responseWriterTracer) readFrom(r io.Reader) (int64, error) {
 	return io.CopyBuffer(wf, struct{ io.Reader }{r}, buf)
 }
 
-type (
-	flusherProxy    struct{ w *responseWriterTracer }
-	hijackerProxy   struct{ w *responseWriterTracer }
-	pusherProxy     struct{ w *responseWriterTracer }
-	readerFromProxy struct{ w *responseWriterTracer }
-)
-
-func (t flusherProxy) Flush() {
-	t.w.flush()
-}
-
-func (t hijackerProxy) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return t.w.hijack()
-}
-
-func (t pusherProxy) Push(target string, opts *http.PushOptions) error {
-	return t.w.push(target, opts)
-}
-
-func (t readerFromProxy) ReadFrom(r io.Reader) (int64, error) {
-	return t.w.readFrom(r)
-}
-
 // Wrap hooks the ServerTracer into the ResponseWriter.
 // Any calls to the ResponseWriter or its optional interfaces
 // CloseNotifier, Flusher, Hijacker, Pusher, and ReaderFrom
@@ -164,245 +137,272 @@ func (t readerFromProxy) ReadFrom(r io.Reader) (int64, error) {
 // CloseNotifier is not exposed because it is deprecated.
 // ReaderFrom is not exposed because transparently calls ServerTracer.Write.
 func Wrap(w http.ResponseWriter, tracer ServerTracer) http.ResponseWriter {
-	var (
-		closeNotifier http.CloseNotifier // 00001
-		flusher       http.Flusher       // 00010
-		hijacker      http.Hijacker      // 00100
-		pusher        http.Pusher        // 01000
-		readerFrom    io.ReaderFrom      // 10000
-		ifaces        int
-		ok            bool
+	const (
+		ifaceCloseNotifier = 1 << iota
+		ifaceFlusher
+		ifaceHijacker
+		ifacePusher
+		ifaceReaderFrom
 	)
 
-	rwt := &responseWriterTracer{w, tracer, 0}
+	var ifaces int
 
-	if closeNotifier, ok = w.(http.CloseNotifier); ok {
-		ifaces |= ifaceCloseNotifier
+	rw := &responseWriterTracer{w, tracer, 0}
+
+	if _, ok := w.(http.CloseNotifier); ok {
+		ifaces |= ifaceCloseNotifier // 00001
 	}
-	if _, ok = w.(http.Flusher); ok {
-		ifaces |= ifaceFlusher
-		flusher = flusherProxy{rwt}
+	if _, ok := w.(http.Flusher); ok {
+		ifaces |= ifaceFlusher // 00010
 	}
-	if _, ok = w.(http.Hijacker); ok {
-		ifaces |= ifaceHijacker
-		hijacker = hijackerProxy{rwt}
+	if _, ok := w.(http.Hijacker); ok {
+		ifaces |= ifaceHijacker // 00100
 	}
-	if _, ok = w.(http.Pusher); ok {
-		ifaces |= ifacePusher
-		pusher = pusherProxy{rwt}
+	if _, ok := w.(http.Pusher); ok {
+		ifaces |= ifacePusher // 01000
 	}
-	if _, ok = w.(io.ReaderFrom); ok {
-		ifaces |= ifaceReaderFrom
-		readerFrom = readerFromProxy{rwt}
+	if _, ok := w.(io.ReaderFrom); ok {
+		ifaces |= ifaceReaderFrom // 10000
 	}
 
 	switch ifaces {
 	default:
-		return rwt
+		return rw
 	case ifaceCloseNotifier: // 00001
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
-		}{rwt, closeNotifier}
+		}{rw, rw, rw}
 	case ifaceFlusher: // 00010
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Flusher
-		}{rwt, flusher}
+		}{rw, rw, rw}
 	case ifaceCloseNotifier + ifaceFlusher: // 00011
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Flusher
-		}{rwt, closeNotifier, flusher}
+		}{rw, rw, rw, rw}
 	case ifaceHijacker: // 00100
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Hijacker
-		}{rwt, hijacker}
+		}{rw, rw, rw}
 	case ifaceCloseNotifier + ifaceHijacker: // 00101
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Hijacker
-		}{rwt, closeNotifier, hijacker}
+		}{rw, rw, rw, rw}
 	case ifaceFlusher + ifaceHijacker: // 00110
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Flusher
 			http.Hijacker
-		}{rwt, flusher, hijacker}
+		}{rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceFlusher + ifaceHijacker: // 00111
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Flusher
 			http.Hijacker
-		}{rwt, closeNotifier, flusher, hijacker}
+		}{rw, rw, rw, rw, rw}
 	case ifacePusher: // 01000
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Pusher
-		}{rwt, pusher}
+		}{rw, rw, rw}
 	case ifaceCloseNotifier + ifacePusher: // 01001
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Pusher
-		}{rwt, closeNotifier, pusher}
+		}{rw, rw, rw, rw}
 	case ifaceFlusher + ifacePusher: // 01010
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Flusher
 			http.Pusher
-		}{rwt, flusher, pusher}
+		}{rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceFlusher + ifacePusher: // 01011
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Flusher
 			http.Pusher
-		}{rwt, closeNotifier, flusher, pusher}
+		}{rw, rw, rw, rw, rw}
 	case ifaceHijacker + ifacePusher: // 01100
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Hijacker
 			http.Pusher
-		}{rwt, hijacker, pusher}
+		}{rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceHijacker + ifacePusher: // 01101
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Hijacker
 			http.Pusher
-		}{rwt, closeNotifier, hijacker, pusher}
+		}{rw, rw, rw, rw, rw}
 	case ifaceFlusher + ifaceHijacker + ifacePusher: // 01110
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Flusher
 			http.Hijacker
 			http.Pusher
-		}{rwt, flusher, hijacker, pusher}
+		}{rw, rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceFlusher + ifaceHijacker + ifacePusher: // 01111
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Flusher
 			http.Hijacker
 			http.Pusher
-		}{rwt, closeNotifier, flusher, hijacker, pusher}
+		}{rw, rw, rw, rw, rw, rw}
 	case ifaceReaderFrom: // 10000
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			io.ReaderFrom
-		}{rwt, readerFrom}
+		}{rw, rw, rw}
 	case ifaceCloseNotifier + ifaceReaderFrom: // 10001
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			io.ReaderFrom
-		}{rwt, closeNotifier, readerFrom}
+		}{rw, rw, rw, rw}
 	case ifaceFlusher + ifaceReaderFrom: // 10010
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Flusher
 			io.ReaderFrom
-		}{rwt, flusher, readerFrom}
+		}{rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceFlusher + ifaceReaderFrom: // 10011
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Flusher
 			io.ReaderFrom
-		}{rwt, closeNotifier, flusher, readerFrom}
+		}{rw, rw, rw, rw, rw}
 	case ifaceHijacker + ifaceReaderFrom: // 10100
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Hijacker
 			io.ReaderFrom
-		}{rwt, hijacker, readerFrom}
+		}{rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceHijacker + ifaceReaderFrom: // 10101
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Hijacker
 			io.ReaderFrom
-		}{rwt, closeNotifier, hijacker, readerFrom}
+		}{rw, rw, rw, rw, rw}
 	case ifaceFlusher + ifaceHijacker + ifaceReaderFrom: // 10110
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Flusher
 			http.Hijacker
 			io.ReaderFrom
-		}{rwt, flusher, hijacker, readerFrom}
+		}{rw, rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceFlusher + ifaceHijacker + ifaceReaderFrom: // 10111
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Flusher
 			http.Hijacker
 			io.ReaderFrom
-		}{rwt, closeNotifier, flusher, hijacker, readerFrom}
+		}{rw, rw, rw, rw, rw, rw}
 	case ifacePusher + ifaceReaderFrom: // 11000
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Pusher
 			io.ReaderFrom
-		}{rwt, pusher, readerFrom}
+		}{rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifacePusher + ifaceReaderFrom: // 11001
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Pusher
 			io.ReaderFrom
-		}{rwt, closeNotifier, pusher, readerFrom}
+		}{rw, rw, rw, rw, rw}
 	case ifaceFlusher + ifacePusher + ifaceReaderFrom: // 11010
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Flusher
 			http.Pusher
 			io.ReaderFrom
-		}{rwt, flusher, pusher, readerFrom}
+		}{rw, rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceFlusher + ifacePusher + ifaceReaderFrom: // 11011
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Flusher
 			http.Pusher
 			io.ReaderFrom
-		}{rwt, closeNotifier, flusher, pusher, readerFrom}
+		}{rw, rw, rw, rw, rw, rw}
 	case ifaceHijacker + ifacePusher + ifaceReaderFrom: // 11100
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Hijacker
 			http.Pusher
 			io.ReaderFrom
-		}{rwt, hijacker, pusher, readerFrom}
+		}{rw, rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceHijacker + ifacePusher + ifaceReaderFrom: // 11101
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Hijacker
 			http.Pusher
 			io.ReaderFrom
-		}{rwt, closeNotifier, hijacker, pusher, readerFrom}
+		}{rw, rw, rw, rw, rw, rw}
 	case ifaceFlusher + ifaceHijacker + ifacePusher + ifaceReaderFrom: // 11110
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.Flusher
 			http.Hijacker
 			http.Pusher
 			io.ReaderFrom
-		}{rwt, flusher, hijacker, pusher, readerFrom}
+		}{rw, rw, rw, rw, rw, rw}
 	case ifaceCloseNotifier + ifaceFlusher + ifaceHijacker + ifacePusher + ifaceReaderFrom: // 11111
 		return struct {
-			*responseWriterTracer
+			Unwrapper
+			http.ResponseWriter
 			http.CloseNotifier
 			http.Flusher
 			http.Hijacker
 			http.Pusher
 			io.ReaderFrom
-		}{rwt, closeNotifier, flusher, hijacker, pusher, readerFrom}
+		}{rw, rw, rw, rw, rw, rw, rw}
 	}
 }
 
