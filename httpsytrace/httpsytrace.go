@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"sync/atomic"
 )
@@ -28,7 +29,12 @@ const (
 // ServerTracer exposes hooks into the ResponseWriter.
 type ServerTracer interface {
 	// Write is called whenever the ResponseWriter is written to,
-	// either directly by Write or via the io.ReaderFrom interface.
+	// unless the source Reader is an *os.File and the underlying
+	// TCP connection implements the io.ReaderFrom fast path.
+	//
+	// Wrap the *os.File in the HTTP handler to bypass
+	// the fast path and intercept the writes:
+	//  io.Copy(w, struct{ io.Reader }{f})
 	Write(w io.Writer, p []byte) (int, error)
 
 	// WriteHeader is called once when the status line and headers are written.
@@ -78,6 +84,23 @@ func (w *responseWriterTracer) push(target string, opts *http.PushOptions) error
 	return w.tracer.Push(w.ResponseWriter.(http.Pusher), target, opts)
 }
 
+func srcIsRegularFile(src io.Reader) (isRegular bool, err error) {
+	// copied from the go source code:
+	// https://golang.org/src/net/http/server.go?s=3003:5866#L564
+	switch v := src.(type) {
+	case *os.File:
+		fi, err := v.Stat()
+		if err != nil {
+			return false, err
+		}
+		return fi.Mode().IsRegular(), nil
+	case *io.LimitedReader:
+		return srcIsRegularFile(v.R)
+	default:
+		return
+	}
+}
+
 type writerFunc func([]byte) (int, error)
 
 func (f writerFunc) Write(p []byte) (int, error) {
@@ -89,22 +112,25 @@ var byteSlicePool = &sync.Pool{
 }
 
 func (w *responseWriterTracer) readFrom(r io.Reader) (int64, error) {
+	regular, err := srcIsRegularFile(r)
+	if err != nil {
+		return 0, err
+	}
+
 	w.WriteHeader(http.StatusOK)
-	pr, pw := io.Pipe()
-	defer pr.Close()
 
-	traceWriter := writerFunc(func(p []byte) (int, error) {
-		return w.tracer.Write(pw, p)
-	})
+	// fast path for regular files
+	if regular {
+		return w.ResponseWriter.(io.ReaderFrom).ReadFrom(r)
+	}
 
-	go func() {
-		buf := byteSlicePool.Get().([]byte)
-		defer byteSlicePool.Put(buf)
-		_, err := io.CopyBuffer(traceWriter, r, buf)
-		_ = pw.CloseWithError(err)
-	}()
-
-	return w.ResponseWriter.(io.ReaderFrom).ReadFrom(pr)
+	wf := writerFunc(func(p []byte) (int, error) { return w.tracer.Write(w.ResponseWriter, p) })
+	if writerTo, ok := r.(io.WriterTo); ok {
+		return writerTo.WriteTo(wf)
+	}
+	buf := byteSlicePool.Get().([]byte)
+	defer byteSlicePool.Put(buf)
+	return io.CopyBuffer(wf, struct{ io.Reader }{r}, buf)
 }
 
 type (
@@ -133,11 +159,10 @@ func (t readerFromProxy) ReadFrom(r io.Reader) (int64, error) {
 // Wrap hooks the ServerTracer into the ResponseWriter.
 // Any calls to the ResponseWriter or its optional interfaces
 // CloseNotifier, Flusher, Hijacker, Pusher, and ReaderFrom
-// will go through the ServerTracer.
+// will be intercepted.
 //
-// CloseNotifier and ReaderFrom are not exposed.
-// CloseNotifier is deprecated and therefore not useful to hook into.
-// ReaderFrom transparently calls ServerTracer.Write and does not need to be exposed.
+// CloseNotifier is not exposed because it is deprecated.
+// ReaderFrom is not exposed because transparently calls ServerTracer.Write.
 func Wrap(w http.ResponseWriter, tracer ServerTracer) http.ResponseWriter {
 	var (
 		closeNotifier http.CloseNotifier // 00001

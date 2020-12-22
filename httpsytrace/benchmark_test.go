@@ -42,10 +42,10 @@ func BenchmarkHandlerServerTrace(b *testing.B) {
 }
 
 func BenchmarkReaderFromBaseline(b *testing.B) {
-	bs := make([]byte, 32*1024)
+	bs := make([]byte, 32*1024*1024)
 
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		buffer := bytes.NewBuffer(bs)
+		buffer := bytes.NewReader(bs)
 		w.(io.ReaderFrom).ReadFrom(buffer)
 	})
 
@@ -60,10 +60,10 @@ func BenchmarkReaderFromBaseline(b *testing.B) {
 }
 
 func BenchmarkReaderFromServerTrace(b *testing.B) {
-	bs := make([]byte, 32*1024)
+	bs := make([]byte, 32*1024*1024)
 
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		buffer := bytes.NewBuffer(bs)
+		buffer := bytes.NewReader(bs)
 		w.(io.ReaderFrom).ReadFrom(buffer)
 	})
 
