@@ -20,6 +20,9 @@ import (
 
 // ServerTracer exposes hooks into the ResponseWriter.
 type ServerTracer interface {
+	// Header is called when ResponseWriter.Header() is called.
+	Header(http.ResponseWriter) http.Header
+
 	// Write is called whenever the ResponseWriter is written to,
 	// unless the source Reader is an *os.File and the underlying
 	// TCP connection implements the io.ReaderFrom fast path.
@@ -50,6 +53,10 @@ type responseWriterTracer struct {
 
 func (w *responseWriterTracer) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
+}
+
+func (w *responseWriterTracer) Header() http.Header {
+	return w.tracer.Header(w.ResponseWriter)
 }
 
 func (w *responseWriterTracer) WriteHeader(statusCode int) {
@@ -423,6 +430,11 @@ func Unwrap(w http.ResponseWriter) (http.ResponseWriter, bool) {
 // ServerTrace is a default implementation of ServerTracer.
 // Its behaviour can be extended by embedding it in another struct.
 type ServerTrace struct{}
+
+// Header implements ServerTracer.
+func (st ServerTrace) Header(w http.ResponseWriter) http.Header {
+	return w.Header()
+}
 
 // WriteHeader implements ServerTracer.
 func (st ServerTrace) WriteHeader(w http.ResponseWriter, statusCode int) {
