@@ -10,19 +10,19 @@ import (
 )
 
 type metrics struct {
-	httpsytrace.ServerTrace
+	httpsytrace.DefaultTrace
 	BytesWritten int64
 	StatusCode   int
 }
 
 func (m *metrics) WriteHeader(w http.ResponseWriter, statusCode int) {
 	m.StatusCode = statusCode
-	m.ServerTrace.WriteHeader(w, statusCode)
+	m.DefaultTrace.WriteHeader(w, statusCode)
 }
 
 func (m *metrics) Write(w io.Writer, p []byte) (int, error) {
 	m.BytesWritten += int64(len(p))
-	return m.ServerTrace.Write(w, p)
+	return m.DefaultTrace.Write(w, p)
 }
 
 // Create a logger middleware to log all requests and their metrics.

@@ -427,36 +427,35 @@ func Unwrap(w http.ResponseWriter) (http.ResponseWriter, bool) {
 	return w, false
 }
 
-// ServerTrace is a default implementation of ServerTracer.
-// Its behaviour can be extended by embedding it in another struct.
-type ServerTrace struct{}
+// DefaultTrace is the default implementation of ServerTracer.
+type DefaultTrace struct{}
 
 // Header implements ServerTracer.
-func (st ServerTrace) Header(w http.ResponseWriter) http.Header {
+func (st DefaultTrace) Header(w http.ResponseWriter) http.Header {
 	return w.Header()
 }
 
 // WriteHeader implements ServerTracer.
-func (st ServerTrace) WriteHeader(w http.ResponseWriter, statusCode int) {
+func (st DefaultTrace) WriteHeader(w http.ResponseWriter, statusCode int) {
 	w.WriteHeader(statusCode)
 }
 
 // Write implements ServerTracer.
-func (st ServerTrace) Write(w io.Writer, p []byte) (int, error) {
+func (st DefaultTrace) Write(w io.Writer, p []byte) (int, error) {
 	return w.Write(p)
 }
 
 // Flush implements ServerTracer.
-func (st ServerTrace) Flush(flusher http.Flusher) {
+func (st DefaultTrace) Flush(flusher http.Flusher) {
 	flusher.Flush()
 }
 
 // Hijack implements ServerTracer.
-func (st ServerTrace) Hijack(hijacker http.Hijacker) (net.Conn, *bufio.ReadWriter, error) {
+func (st DefaultTrace) Hijack(hijacker http.Hijacker) (net.Conn, *bufio.ReadWriter, error) {
 	return hijacker.Hijack()
 }
 
 // Push implements ServerTracer.
-func (st ServerTrace) Push(pusher http.Pusher, target string, opts *http.PushOptions) error {
+func (st DefaultTrace) Push(pusher http.Pusher, target string, opts *http.PushOptions) error {
 	return pusher.Push(target, opts)
 }

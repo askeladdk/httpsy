@@ -26,7 +26,7 @@ func BenchmarkHandlerServerTrace(b *testing.B) {
 
 	middleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(Wrap(w, ServerTrace{}), r)
+			next.ServeHTTP(Wrap(w, DefaultTrace{}), r)
 		})
 	}
 
@@ -69,7 +69,7 @@ func BenchmarkReaderFromServerTrace(b *testing.B) {
 
 	middleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(Wrap(w, ServerTrace{}), r)
+			next.ServeHTTP(Wrap(w, DefaultTrace{}), r)
 		})
 	}
 

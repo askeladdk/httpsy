@@ -12,19 +12,19 @@ import (
 )
 
 type metrics struct {
-	ServerTrace
+	DefaultTrace
 	BytesWritten int64
 	StatusCode   int
 }
 
 func (m *metrics) WriteHeader(w http.ResponseWriter, statusCode int) {
 	m.StatusCode = statusCode
-	m.ServerTrace.WriteHeader(w, statusCode)
+	m.DefaultTrace.WriteHeader(w, statusCode)
 }
 
 func (m *metrics) Write(w io.Writer, p []byte) (int, error) {
 	m.BytesWritten += int64(len(p))
-	return m.ServerTrace.Write(w, p)
+	return m.DefaultTrace.Write(w, p)
 }
 
 func metricsMiddleware(status, written *int) func(http.Handler) http.Handler {
@@ -57,7 +57,7 @@ func TestMetricsTrace(t *testing.T) {
 }
 
 type writeTracer struct {
-	ServerTrace
+	DefaultTrace
 	w io.Writer
 }
 
@@ -110,7 +110,7 @@ func TestReadFrom(t *testing.T) {
 
 func TestUnwrap(t *testing.T) {
 	w := httptest.NewRecorder()
-	x := Wrap(w, ServerTrace{})
+	x := Wrap(w, DefaultTrace{})
 	if y, ok := Unwrap(x); y != w || !ok {
 		t.Fatal()
 	}
