@@ -2,6 +2,7 @@ package httpsy
 
 import (
 	"net/http"
+	"strings"
 )
 
 // method handler interfaces idea taken from
@@ -240,6 +241,37 @@ func isMethodHandler(handler http.Handler) bool {
 	}
 }
 
+func listAllowedMethods(handler http.Handler) (allowed []string) {
+	if _, ok := handler.(ConnectHandler); ok {
+		allowed = append(allowed, http.MethodConnect)
+	}
+	if _, ok := handler.(DeleteHandler); ok {
+		allowed = append(allowed, http.MethodDelete)
+	}
+	if _, ok := handler.(GetHandler); ok {
+		allowed = append(allowed, http.MethodGet)
+	}
+	if _, ok := handler.(HeadHandler); ok {
+		allowed = append(allowed, http.MethodHead)
+	}
+	if _, ok := handler.(OptionsHandler); ok {
+		allowed = append(allowed, http.MethodOptions)
+	}
+	if _, ok := handler.(PatchHandler); ok {
+		allowed = append(allowed, http.MethodPatch)
+	}
+	if _, ok := handler.(PostHandler); ok {
+		allowed = append(allowed, http.MethodPost)
+	}
+	if _, ok := handler.(PutHandler); ok {
+		allowed = append(allowed, http.MethodPut)
+	}
+	if _, ok := handler.(TraceHandler); ok {
+		allowed = append(allowed, http.MethodTrace)
+	}
+	return
+}
+
 // Methods is a middleware that adapts the handler to dispatch to any implemented (Method)Handlers.
 // Due to the nature of middlewares, it must be the first middleware to be applied to the endpoint.
 // It is automatically applied by ServeMux and usually does not need to be called manually.
@@ -247,6 +279,8 @@ func Methods(next http.Handler) http.Handler {
 	if !isMethodHandler(next) {
 		return next
 	}
+
+	allowedMethods := listAllowedMethods(next)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -296,6 +330,8 @@ func Methods(next http.Handler) http.Handler {
 				return
 			}
 		}
+
+		w.Header().Set("Allow", strings.Join(allowedMethods, ", "))
 		next.ServeHTTP(w, r)
 	})
 }
