@@ -20,7 +20,7 @@ func TestCSRFMaskUnmask(t *testing.T) {
 	copy(buf[csrfTokenLength:], token)
 	csrfMask(secret, buf)
 	csrfUnmask(secret, buf)
-	if bytes.Compare(token, buf[csrfTokenLength:]) != 0 {
+	if !bytes.Equal(token, buf[csrfTokenLength:]) {
 		t.Fatal()
 	}
 }

@@ -61,7 +61,7 @@ func Render(w http.ResponseWriter, r *http.Request, statusCode int, data interfa
 	defer putBytesBuffer(buffer)
 
 	if err := renderer.Render(buffer, w.Header(), data); err != nil {
-		Error(w, r, http.StatusInternalServerError, err)
+		InternalServerError(w, r, err)
 		return
 	}
 

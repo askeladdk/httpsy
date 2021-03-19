@@ -102,9 +102,8 @@ func RealIP(next http.Handler) http.Handler {
 	})
 }
 
-// Authenticate is a middleware that delegates authentication
-// to an Authenticator and responds with the appropriate
-// HTTP status codes depending on the return value of authenticator.
+// Authenticate is a middleware that delegates authentication to an Authenticator.
+// It responds with the appropriate HTTP status codes depending on the return value of authenticator.
 // See Authenticator for an explanation of return error values.
 func Authenticate(authenticator Authenticator) MiddlewareFunc {
 	return func(next http.Handler) http.Handler {

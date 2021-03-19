@@ -107,7 +107,7 @@ func (mux *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if r.ProtoAtLeast(1, 1) {
 			w.Header().Set("Connection", "close")
 		}
-		Error(w, r, http.StatusBadRequest, StatusError(http.StatusBadRequest))
+		BadRequest(w, r)
 		return
 	}
 	h, _ := mux.Handler(r)
