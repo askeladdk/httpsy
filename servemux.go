@@ -7,7 +7,7 @@ import (
 
 // ServeMux is an HTTP request multiplexer that can use middleware.
 type ServeMux struct {
-	http.ServeMux
+	serveMux    http.ServeMux
 	middlewares Middlewares
 }
 
@@ -23,7 +23,7 @@ func (mux *ServeMux) Use(mws ...MiddlewareFunc) {
 
 // Handle adds a route and applies middlewares to it.
 func (mux *ServeMux) Handle(pattern string, handler http.Handler) {
-	mux.ServeMux.Handle(pattern, mux.middlewares.Handler(Methods(handler)))
+	mux.serveMux.Handle(pattern, mux.middlewares.Handler(Methods(handler)))
 }
 
 // HandleFunc adds a route and applies middlewares to it.
@@ -92,7 +92,7 @@ func (mux *ServeMux) RouteParam(pattern, param string, fn func(*ServeMux)) *Serv
 // a non-nil handler.
 func (mux *ServeMux) Handler(r *http.Request) (h http.Handler, pattern string) {
 	// hack to use httpsy error handling
-	h, pattern = mux.ServeMux.Handler(r)
+	h, pattern = mux.serveMux.Handler(r)
 	if pattern == "" {
 		h = http.HandlerFunc(NotFound)
 	}
