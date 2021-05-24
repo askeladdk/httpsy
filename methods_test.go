@@ -12,15 +12,15 @@ func TestMethods(t *testing.T) {
 		Method  string
 		Handler http.Handler
 	}{
-		{http.MethodConnect, Methods(ConnectHandlerFunc(Pong))},
-		{http.MethodDelete, Methods(DeleteHandlerFunc(Pong))},
-		{http.MethodGet, Methods(GetHandlerFunc(Pong))},
-		{http.MethodHead, Methods(HeadHandlerFunc(Pong))},
-		{http.MethodOptions, Methods(OptionsHandlerFunc(Pong))},
-		{http.MethodPatch, Methods(PatchHandlerFunc(Pong))},
-		{http.MethodPost, Methods(PostHandlerFunc(Pong))},
-		{http.MethodPut, Methods(PutHandlerFunc(Pong))},
-		{http.MethodTrace, Methods(TraceHandlerFunc(Pong))},
+		{http.MethodConnect, Methods(ConnectHandlerFunc(NoContent))},
+		{http.MethodDelete, Methods(DeleteHandlerFunc(NoContent))},
+		{http.MethodGet, Methods(GetHandlerFunc(NoContent))},
+		{http.MethodHead, Methods(HeadHandlerFunc(NoContent))},
+		{http.MethodOptions, Methods(OptionsHandlerFunc(NoContent))},
+		{http.MethodPatch, Methods(PatchHandlerFunc(NoContent))},
+		{http.MethodPost, Methods(PostHandlerFunc(NoContent))},
+		{http.MethodPut, Methods(PutHandlerFunc(NoContent))},
+		{http.MethodTrace, Methods(TraceHandlerFunc(NoContent))},
 	}
 
 	for i, m := range methods {
@@ -46,7 +46,7 @@ func TestMethods(t *testing.T) {
 	t.Run("TEAPOT", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("TEAPOT", "/", nil)
-		Methods(http.HandlerFunc(Pong)).ServeHTTP(w, r)
+		Methods(http.HandlerFunc(NoContent)).ServeHTTP(w, r)
 		if w.Code != http.StatusNoContent {
 			t.Fatal()
 		}

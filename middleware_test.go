@@ -88,7 +88,7 @@ func TestParam(t *testing.T) {
 func TestChainNoCacheRequestID(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	x := Chain(NoCache, RequestID).Handler(http.HandlerFunc(Pong))
+	x := Chain(NoCache, RequestID).Handler(http.HandlerFunc(NoContent))
 	x.ServeHTTP(w, r)
 	if w.Header().Get("Expires") == "" || r.Header.Get("X-Request-ID") == "" {
 		t.Fatal()
@@ -102,7 +102,7 @@ func TestIfEndPoint(t *testing.T) {
 		Error(w, r, StatusUnauthorized)
 	})
 
-	x := IfChain(isPost, unauthorized)(http.HandlerFunc(Pong))
+	x := IfChain(isPost, unauthorized)(http.HandlerFunc(NoContent))
 
 	t.Run("204", func(t *testing.T) {
 		w := httptest.NewRecorder()

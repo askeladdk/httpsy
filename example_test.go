@@ -75,7 +75,7 @@ func ExampleIf() {
 	// to restrict authentication to POST requests.
 	mux := httpsy.NewServeMux()
 	mux.Use(httpsy.If(isPost, httpsy.Authenticate(authFunc)))
-	mux.HandleFunc("/", httpsy.Pong)
+	mux.HandleFunc("/", httpsy.NoContent)
 
 	// GET request succeeds.
 	w := httptest.NewRecorder()
