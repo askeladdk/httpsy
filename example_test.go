@@ -67,9 +67,9 @@ func ExampleIf() {
 	})
 
 	// Define an authenticator that forbids all authentication attempts.
-	authFunc := httpsy.AuthenticatorFunc(func(r *http.Request) (*http.Request, error) {
+	authFunc := func(r *http.Request) (*http.Request, error) {
 		return r, httpsy.StatusForbidden
-	})
+	}
 
 	// Define the ServeMux and apply the If middleware
 	// to restrict authentication to POST requests.

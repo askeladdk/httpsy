@@ -82,30 +82,6 @@ func NotFound(w http.ResponseWriter, r *http.Request) {
 	Error(w, r, StatusNotFound)
 }
 
-// Authenticator permits a request, returning the (possibly modified) request
-// and an error value denoting the success or failure of authentication.
-//
-// An error value of nil means that authentication succeeded.
-// StatusUnauthorized (HTTP 401) means that authentication failed.
-// StatusForbidden (HTTP 403) means that authentication succeeded but
-// the user is still not allowed to access the resource.
-// Any other value means that an error occurred.
-//
-// The request must always be returned along with the error.
-// It may be modified using WithContextValue to set context values that
-// endpoints or other middleware down the line can use.
-type Authenticator interface {
-	Authenticate(*http.Request) (*http.Request, error)
-}
-
-// AuthenticatorFunc adapts a function to an Authenticator.
-type AuthenticatorFunc func(*http.Request) (*http.Request, error)
-
-// Authenticate implements Authenticator.
-func (f AuthenticatorFunc) Authenticate(r *http.Request) (*http.Request, error) {
-	return f(r)
-}
-
 // ShiftPath splits off the first component of p, which will be cleaned of
 // relative components before processing. head will never contain a slash and
 // tail will always be a rooted path without trailing slash.

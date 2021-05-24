@@ -15,7 +15,7 @@ func TestAuthenticate(t *testing.T) {
 		fmt.Fprintf(w, "%s", username)
 	})
 
-	basicAuth := AuthenticatorFunc(func(r *http.Request) (*http.Request, error) {
+	basicAuth := func(r *http.Request) (*http.Request, error) {
 		if username, password, ok := r.BasicAuth(); !ok {
 			return r, StatusUnauthorized
 		} else if username == "gopher" && password == "secret" {
@@ -24,7 +24,7 @@ func TestAuthenticate(t *testing.T) {
 			return r, StatusForbidden
 		}
 		return r, StatusUnauthorized
-	})
+	}
 
 	x := Authenticate(basicAuth)(endpoint)
 

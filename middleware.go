@@ -103,13 +103,21 @@ func RealIP(next http.Handler) http.Handler {
 	})
 }
 
-// Authenticate is a middleware that delegates authentication to an Authenticator.
-// It responds with the appropriate HTTP status codes depending on the return value of authenticator.
-// See Authenticator for an explanation of return error values.
-func Authenticate(authenticator Authenticator) MiddlewareFunc {
+// Authenticate is a middleware that delegates authentication to a function.
+//
+// The permit parameter authenticates a request, returning the (possibly modified) request
+// and an error value denoting the success or failure of authentication.
+// An error value of nil means that authentication succeeded.
+// Permit should return StatusUnauthorized if authentication failed,
+// and StatusForbidden if authentication succeeded but
+// the user is still not allowed to access the resource.
+// The request must always be returned along with the error.
+// It may be modified using WithContextValue to set context values that
+// endpoints or other middleware down the line can use.
+func Authenticate(permit func(*http.Request) (*http.Request, error)) MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r, err := authenticator.Authenticate(r)
+			r, err := permit(r)
 			if err != nil {
 				if StatusCode(err) == http.StatusUnauthorized {
 					if w.Header().Get("WWW-Authenticate") == "" {
