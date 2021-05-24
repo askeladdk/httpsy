@@ -38,18 +38,8 @@ func GetContextValue(r *http.Request, key *ContextKey) interface{} {
 	return r.Context().Value(key)
 }
 
-// ErrorHandler handles an error and generates an appropriate response.
-type ErrorHandler interface {
-	HandleError(w http.ResponseWriter, r *http.Request, err error)
-}
-
-// ErrorHandlerFunc adapts a function to an ErrorHandler.
+// ErrorHandlerFunc handles an error and generates an appropriate response.
 type ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
-
-// HandleError implements ErrorHandler.
-func (f ErrorHandlerFunc) HandleError(w http.ResponseWriter, r *http.Request, err error) {
-	f(w, r, err)
-}
 
 // TextError replies to the request with the error in plain text.
 func TextError(w http.ResponseWriter, r *http.Request, err error) {
@@ -70,11 +60,11 @@ func JSONError(w http.ResponseWriter, r *http.Request, err error) {
 // Error replies to the request with the specified error message.
 // It will use the error handler set with SetErrorHandler or defaults to TextError otherwise.
 func Error(w http.ResponseWriter, r *http.Request, err error) {
-	var errorHandler ErrorHandler = ErrorHandlerFunc(TextError)
-	if h, ok := GetContextValue(r, keyErrorHandler).(ErrorHandler); ok {
+	var errorHandler ErrorHandlerFunc = TextError
+	if h, ok := GetContextValue(r, keyErrorHandler).(ErrorHandlerFunc); ok {
 		errorHandler = h
 	}
-	errorHandler.HandleError(w, r, err)
+	errorHandler(w, r, err)
 }
 
 // NotFound replies to the request with an HTTP 404 not found error.
