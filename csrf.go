@@ -10,9 +10,6 @@ import (
 	"strings"
 )
 
-// ErrBadCSRF is returned when CSRF validation failed.
-const ErrBadCSRF = errorString("csrf validation failed")
-
 const csrfTokenLength = 32
 
 var csrfTokenKey = NewContextKey("csrf-token")
@@ -154,14 +151,15 @@ func (csrf CSRF) Handler(next http.Handler) http.Handler {
 		if !exempt && r.URL.Scheme == "https" {
 			referer, err := url.Parse(r.Header.Get("Referer"))
 			if err != nil || referer.String() == "" || !sameOrigin(referer, r.URL) {
-				Forbidden(w, r)
+				Error(w, r, StatusForbidden)
 				return
 			}
 		}
 
+		// verify token
 		sentToken := csrf.extractToken(r)
 		if !exempt && !csrfVerify(secret, realToken, sentToken) {
-			Error(w, r, http.StatusForbidden, ErrBadCSRF)
+			Error(w, r, StatusForbidden)
 			return
 		}
 

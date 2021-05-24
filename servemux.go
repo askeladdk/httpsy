@@ -94,7 +94,9 @@ func (mux *ServeMux) Handler(r *http.Request) (h http.Handler, pattern string) {
 	// hack to use httpsy error handling
 	h, pattern = mux.serveMux.Handler(r)
 	if pattern == "" {
-		h = http.HandlerFunc(NotFound)
+		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			Error(w, r, StatusNotFound)
+		})
 	}
 	return
 }
@@ -107,7 +109,7 @@ func (mux *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if r.ProtoAtLeast(1, 1) {
 			w.Header().Set("Connection", "close")
 		}
-		BadRequest(w, r)
+		Error(w, r, StatusBadRequest)
 		return
 	}
 	h, _ := mux.Handler(r)

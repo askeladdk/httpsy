@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/askeladdk/httpsy/httpsyproblem"
 )
 
 // MiddlewareFunc defines middleware.
@@ -70,8 +72,7 @@ func AcceptContentTypes(contentTypes ...string) MiddlewareFunc {
 			ct = strings.ToLower(ct)
 
 			if !stringsMatch(cts, ct) {
-				const status = http.StatusUnsupportedMediaType
-				Error(w, r, status, StatusError(status))
+				Error(w, r, StatusUnsupportedMediaType)
 				return
 			}
 
@@ -108,16 +109,17 @@ func RealIP(next http.Handler) http.Handler {
 func Authenticate(authenticator Authenticator) MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r, err := authenticator.Authenticate(r); err {
-			case nil:
-				next.ServeHTTP(w, r)
-			case ErrAuthenticationFailed:
-				Unauthorized(w, r)
-			case ErrAccessForbidden:
-				Forbidden(w, r)
-			default:
-				InternalServerError(w, r, err)
+			r, err := authenticator.Authenticate(r)
+			if err != nil {
+				if StatusCode(err) == http.StatusUnauthorized {
+					if w.Header().Get("WWW-Authenticate") == "" {
+						w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s", charset="utf-8"`, r.Host))
+					}
+				}
+				Error(w, r, err)
+				return
 			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }
@@ -158,13 +160,13 @@ func Param(param string) MiddlewareFunc {
 			var head string
 			r = cloneRequestURL(r)
 			if head, r.URL.Path = ShiftPath(r.URL.Path); head == "" {
-				NotFound(w, r)
+				Error(w, r, StatusNotFound)
 				return
 			} else if rxp != nil && !rxp.MatchString(head) {
-				NotFound(w, r)
+				Error(w, r, StatusNotFound)
 				return
 			} else if err := r.ParseForm(); err != nil {
-				InternalServerError(w, r, err)
+				Error(w, r, httpsyproblem.Wrap(err, http.StatusInternalServerError))
 				return
 			} else if name != "" {
 				r.Form.Add(name, head)
@@ -203,7 +205,7 @@ func WithContextValue(key *ContextKey, value interface{}) MiddlewareFunc {
 }
 
 // SetErrorHandler is a middleware that sets the error handler used by Error.
-func SetErrorHandler(errorHandler ErrorHandlerFunc) MiddlewareFunc {
+func SetErrorHandler(errorHandler ErrorHandler) MiddlewareFunc {
 	return WithContextValue(keyErrorHandler, errorHandler)
 }
 
@@ -215,13 +217,13 @@ func Recoverer(next http.Handler) http.Handler {
 				var err error
 				switch x := v.(type) {
 				case error:
-					err = x
+					err = httpsyproblem.Wrap(x, http.StatusInternalServerError)
 				case string:
-					err = errorString(x)
+					err = httpsyproblem.Wrap(errorString(x), http.StatusInternalServerError)
 				default:
-					err = errorString(fmt.Sprintf("%v", v))
+					err = httpsyproblem.Wrap(errorString(fmt.Sprintf("%v", v)), http.StatusInternalServerError)
 				}
-				InternalServerError(w, r, err)
+				Error(w, r, err)
 			}
 		}()
 		next.ServeHTTP(w, r)

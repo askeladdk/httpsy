@@ -17,13 +17,13 @@ func TestAuthenticate(t *testing.T) {
 
 	basicAuth := AuthenticatorFunc(func(r *http.Request) (*http.Request, error) {
 		if username, password, ok := r.BasicAuth(); !ok {
-			return r, ErrAuthenticationFailed
+			return r, StatusUnauthorized
 		} else if username == "gopher" && password == "secret" {
 			return SetContextValue(r, usernameKey, username), nil
 		} else if username == "java" {
-			return r, ErrAccessForbidden
+			return r, StatusForbidden
 		}
-		return r, ErrAuthenticationFailed
+		return r, StatusUnauthorized
 	})
 
 	x := Authenticate(basicAuth)(endpoint)
@@ -98,7 +98,11 @@ func TestChainNoCacheRequestID(t *testing.T) {
 func TestIfEndPoint(t *testing.T) {
 	isPost := PredicateFunc(func(r *http.Request) bool { return r.Method == "POST" })
 
-	x := IfChain(isPost, EndpointFunc(Unauthorized))(http.HandlerFunc(Pong))
+	unauthorized := EndpointFunc(func(w http.ResponseWriter, r *http.Request) {
+		Error(w, r, StatusUnauthorized)
+	})
+
+	x := IfChain(isPost, unauthorized)(http.HandlerFunc(Pong))
 
 	t.Run("204", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -130,7 +134,7 @@ func TestSetErrorHandlerPanic(t *testing.T) {
 	x.ServeHTTP(w, r)
 
 	s := w.Body.String()
-	if w.Code != http.StatusInternalServerError || s != "{\"message\":\"gopher!\",\"status\":500}\n" {
+	if w.Code != http.StatusInternalServerError || s != "{\"detail\":\"gopher!\",\"status\":500,\"title\":\"Internal Server Error\"}\n" {
 		t.Fatal()
 	}
 }

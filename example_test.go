@@ -46,7 +46,7 @@ func Example_routeParam() {
 // Respond to all requests with HTTP 418 I'm a teapot.
 func ExampleError() {
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
-		httpsy.Error(w, r, http.StatusTeapot, httpsy.StatusError(http.StatusTeapot))
+		httpsy.Error(w, r, httpsy.StatusTeapot)
 	}
 	mux := httpsy.NewServeMux()
 	mux.HandleFunc("/", endpoint)
@@ -68,7 +68,7 @@ func ExampleIf() {
 
 	// Define an authenticator that forbids all authentication attempts.
 	authFunc := httpsy.AuthenticatorFunc(func(r *http.Request) (*http.Request, error) {
-		return r, httpsy.ErrAccessForbidden
+		return r, httpsy.StatusForbidden
 	})
 
 	// Define the ServeMux and apply the If middleware
