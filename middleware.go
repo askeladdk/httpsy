@@ -250,24 +250,11 @@ func RequestID(next http.Handler) http.Handler {
 	})
 }
 
-// Predicator accepts or rejects a request.
-type Predicator interface {
-	Predicate(*http.Request) bool
-}
-
-// PredicateFunc accepts or rejects a request.
-type PredicateFunc func(*http.Request) bool
-
-// Predicate implements Predicator.
-func (f PredicateFunc) Predicate(r *http.Request) bool {
-	return f(r)
-}
-
 // If applies the middleware only if the condition is true.
-func If(cond Predicator, then MiddlewareFunc) MiddlewareFunc {
+func If(cond func(*http.Request) bool, then MiddlewareFunc) MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if cond.Predicate(r) {
+			if cond(r) {
 				next = then(next)
 			}
 			next.ServeHTTP(w, r)
@@ -276,6 +263,6 @@ func If(cond Predicator, then MiddlewareFunc) MiddlewareFunc {
 }
 
 // IfChain applies the middlewares only if the condition is true.
-func IfChain(cond Predicator, then ...MiddlewareFunc) MiddlewareFunc {
+func IfChain(cond func(*http.Request) bool, then ...MiddlewareFunc) MiddlewareFunc {
 	return If(cond, Chain(then...).Handler)
 }

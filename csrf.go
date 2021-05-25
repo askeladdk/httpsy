@@ -67,7 +67,7 @@ type CSRF struct {
 	ExemptPaths []string
 
 	// ExemptFunc is optional and reports whether the request should be exempt from CSRF validation.
-	ExemptFunc PredicateFunc
+	ExemptFunc func(*http.Request) bool
 
 	// CookieName is the name of the CSRF cookie (required).
 	CookieName string
@@ -172,7 +172,7 @@ func (csrf CSRF) exempt(r *http.Request) bool {
 	if Safe(r) {
 		return true
 	} else if csrf.ExemptFunc != nil {
-		return csrf.ExemptFunc.Predicate(r)
+		return csrf.ExemptFunc(r)
 	}
 	return stringsMatch(csrf.ExemptPaths, r.URL.Path)
 }

@@ -62,9 +62,9 @@ func ExampleError() {
 // selectively apply middleware based on a predicate.
 func ExampleIf() {
 	// Define a predicate function that only accepts POST requests.
-	isPost := httpsy.PredicateFunc(func(r *http.Request) bool {
+	isPost := func(r *http.Request) bool {
 		return r.Method == http.MethodPost
-	})
+	}
 
 	// Define an authenticator that forbids all authentication attempts.
 	authFunc := func(r *http.Request) (*http.Request, error) {
