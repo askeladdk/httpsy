@@ -204,7 +204,7 @@ func NoCache(next http.Handler) http.Handler {
 }
 
 // WithContextValue maps the key to the value in the request context.
-func WithContextValue(key *ContextKey, value interface{}) MiddlewareFunc {
+func WithContextValue(key, value interface{}) MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, SetContextValue(r, key, value))

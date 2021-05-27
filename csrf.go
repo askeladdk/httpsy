@@ -12,7 +12,7 @@ import (
 
 const csrfTokenLength = 32
 
-var csrfTokenKey = NewContextKey("csrf-token")
+var csrfTokenKey = "csrf-token"
 
 // CSRFToken represents a CSRF token to be included in a response.
 type CSRFToken struct {

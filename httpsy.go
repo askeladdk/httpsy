@@ -16,25 +16,15 @@ import (
 	"github.com/askeladdk/httpsy/httpsyproblem"
 )
 
-// ContextKey maps values in a request context.
-type ContextKey struct {
-	name string
-}
-
-// NewContextKey allocates a context key that can be stored in a request context.
-func NewContextKey(name string) *ContextKey {
-	return &ContextKey{name}
-}
-
-var keyErrorHandler = NewContextKey("httpsy error handler")
+var keyErrorHandler contextKey = "httpsy error handler"
 
 // SetContextValue is a shorthand to map key to value in the request context.
-func SetContextValue(r *http.Request, key *ContextKey, value interface{}) *http.Request {
+func SetContextValue(r *http.Request, key, value interface{}) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), key, value))
 }
 
-// GetContextValue gets a value from the request context.
-func GetContextValue(r *http.Request, key *ContextKey) interface{} {
+// GetContextValue is a shorthand to get a value from the request context.
+func GetContextValue(r *http.Request, key interface{}) interface{} {
 	return r.Context().Value(key)
 }
 

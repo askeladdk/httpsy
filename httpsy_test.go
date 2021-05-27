@@ -20,3 +20,16 @@ func TestProblemContentType(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestContextKeyTypeOf(t *testing.T) {
+	var k1 contextKey = "test"
+	var k2 string = "test"
+	r := httptest.NewRequest("GET", "/", nil)
+	r = SetContextValue(r, k1, "world")
+	r = SetContextValue(r, k2, "WORLD")
+	v1 := GetContextValue(r, k1)
+	v2 := GetContextValue(r, k2)
+	if v1 == v2 {
+		t.Fatal()
+	}
+}

@@ -10,6 +10,8 @@ import (
 	"sync"
 )
 
+type contextKey string
+
 type errorString string
 
 func (e errorString) Error() string {

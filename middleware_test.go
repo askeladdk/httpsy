@@ -8,7 +8,7 @@ import (
 )
 
 func TestAuthenticate(t *testing.T) {
-	usernameKey := NewContextKey("username")
+	var usernameKey contextKey = "username"
 
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		username := GetContextValue(r, usernameKey).(string)
