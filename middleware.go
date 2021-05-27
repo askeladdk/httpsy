@@ -218,10 +218,13 @@ func SetErrorHandler(errorHandler ErrorHandlerFunc) MiddlewareFunc {
 }
 
 // Recoverer recovers from panics by responding with an HTTP 500 internal server error.
+// The middleware does not recover from http.ErrAbortHandler.
 func Recoverer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			if v := recover(); v != nil && v != http.ErrAbortHandler {
+			if v := recover(); v == http.ErrAbortHandler {
+				panic(v)
+			} else if v != nil {
 				var err error
 				switch x := v.(type) {
 				case error:

@@ -138,3 +138,21 @@ func TestSetErrorHandlerPanic(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func TestRecovererErrAbortHandler(t *testing.T) {
+	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic(http.ErrAbortHandler)
+	})
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+
+	t.Run("run", func(t *testing.T) {
+		defer func() {
+			if v := recover(); v != http.ErrAbortHandler {
+				t.Fatal()
+			}
+		}()
+		Recoverer(endpoint).ServeHTTP(w, r)
+	})
+}
