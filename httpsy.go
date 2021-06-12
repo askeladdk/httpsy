@@ -28,6 +28,26 @@ func GetContextValue(r *http.Request, key interface{}) interface{} {
 	return r.Context().Value(key)
 }
 
+var paramMapCtxKey = &struct{}{}
+
+func setParamValue(r *http.Request, key, value string) *http.Request {
+	if v := GetContextValue(r, paramMapCtxKey); v != nil {
+		v.(map[string]string)[key] = value
+		return r
+	}
+	m := map[string]string{key: value}
+	return SetContextValue(r, paramMapCtxKey, m)
+}
+
+// GetParamValue returns the value of an URL parameter
+// that was parsed by the Param middleware.
+func GetParamValue(r *http.Request, key string) string {
+	if v := GetContextValue(r, paramMapCtxKey); v != nil {
+		return v.(map[string]string)[key]
+	}
+	return ""
+}
+
 // ErrorHandlerFunc handles an error and generates an appropriate response.
 type ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
 

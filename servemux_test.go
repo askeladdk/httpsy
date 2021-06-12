@@ -9,7 +9,7 @@ import (
 
 func TestServeMux(t *testing.T) {
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "planet %s orbits %s", r.FormValue("planet"), r.FormValue("system"))
+		fmt.Fprintf(w, "planet %s orbits %s", GetParamValue(r, "planet"), GetParamValue(r, "system"))
 	}
 
 	mux := NewServeMux()

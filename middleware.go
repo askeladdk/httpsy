@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"regexp"
+	"path"
 	"strings"
 
 	"github.com/askeladdk/httpsy/httpsyproblem"
@@ -134,33 +134,22 @@ func Authenticate(permit func(*http.Request) (*http.Request, error)) MiddlewareF
 
 // Param is a middleware that extracts the head URL parameter
 // from the URL path and stores it as a form value.
-// It is rarely needed to use Param on its own because
-// it is used by ServeMux to implement the *Param methods.
 //
 //  Param("orderID") // create the middleware
-//  r.FormValue("orderID") // get the parameter in the handler
+//  GetParamValue(r, "orderID") // get the parameter in the handler
 //
-// The URL parameter may optionally be given a regex constraint
-// by adding a colon followed by the regular expression:
-//  Param("orderID:[0-9]+$") // only matches integers
+// The URL parameter may optionally be given a pattern constraint
+// that is matched using path.Match by adding a colon followed by the pattern:
+//  Param("myparam:?*") // matches any sequence of one or more characters
 //
-// It is also possible to use an empty name. In this case the regex
+// It is also possible to use an empty name. In this case the pattern
 // constraint is applied but the value is not stored in the form values:
-//  Param(":v[12]$") // routes /v1 and /v2 to the same handler
-//
-// However, an empty name without a regular expression is not allowed:
-//  Param("") // panics
-//  Param(":") // panics
+//  Param(":v[12]") // routes /v1 and /v2 to the same handler
 func Param(param string) MiddlewareFunc {
-	if param == "" || param == ":" {
-		panic("httpsy: param cannot be empty string")
-	}
-
-	var rxp *regexp.Regexp
-	name := param
+	name, pattern := param, "?*"
 
 	if i := strings.Index(param, ":"); i >= 0 {
-		name, rxp = param[:i], regexp.MustCompile(param[i+1:])
+		name, pattern = param[:i], param[i+1:]
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -170,14 +159,11 @@ func Param(param string) MiddlewareFunc {
 			if head, r.URL.Path = ShiftPath(r.URL.Path); head == "" {
 				Error(w, r, StatusNotFound)
 				return
-			} else if rxp != nil && !rxp.MatchString(head) {
+			} else if ok, _ := path.Match(pattern, head); !ok {
 				Error(w, r, StatusNotFound)
 				return
-			} else if err := r.ParseForm(); err != nil {
-				Error(w, r, httpsyproblem.Wrap(err, http.StatusInternalServerError))
-				return
 			} else if name != "" {
-				r.Form.Add(name, head)
+				r = setParamValue(r, name, head)
 			}
 			next.ServeHTTP(w, r)
 		})

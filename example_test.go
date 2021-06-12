@@ -11,7 +11,7 @@ import (
 // This example demonstrates routing based on an URL parameter and GET request.
 func Example_hello() {
 	hello := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, %s!", r.FormValue("you"))
+		fmt.Fprintf(w, "Hello, %s!", httpsy.GetParamValue(r, "you"))
 	}
 
 	mux := httpsy.NewServeMux()
@@ -28,7 +28,8 @@ func Example_hello() {
 // ServeMux can be nested multiple times using Route or RouteParam.
 func Example_routeParam() {
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "%s orbits %s", r.FormValue("planet"), r.FormValue("sun"))
+		fmt.Fprintf(w, "%s orbits %s",
+			httpsy.GetParamValue(r, "planet"), httpsy.GetParamValue(r, "sun"))
 	}
 
 	mux := httpsy.NewServeMux()

@@ -61,10 +61,10 @@ func TestAuthenticate(t *testing.T) {
 
 func TestParam(t *testing.T) {
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "%s", r.FormValue("a"))
+		fmt.Fprintf(w, "%s", GetParamValue(r, "a"))
 	})
 
-	x := Param("a:[a-z]+$")(endpoint)
+	x := Param("a:*[a-z]")(endpoint)
 
 	t.Run("200", func(t *testing.T) {
 		w := httptest.NewRecorder()
