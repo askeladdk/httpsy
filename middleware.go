@@ -103,25 +103,25 @@ func RealIP(next http.Handler) http.Handler {
 	})
 }
 
-// Authenticate is a middleware that delegates authentication to a function.
+// BasicAuth is a middleware that implements authentication using HTTP Basic Authentication.
+// The authenticate function argument must return nil to indicate that authentication succeeded.
+// Any non-nil error value indicates that authentication failed.
+// The WWW-Authenticate header will be set if the error value has status code 401 Unauthorized
+// using the realm argument. If the realm argument is empty, the realm is set to the hostname.
 //
-// The permit parameter authenticates a request, returning the (possibly modified) request
-// and an error value denoting the success or failure of authentication.
-// An error value of nil means that authentication succeeded.
-// Permit should return StatusUnauthorized if authentication failed,
-// and StatusForbidden if authentication succeeded but
-// the user is still not allowed to access the resource.
-// The request must always be returned along with the error.
-// It may be modified using WithContextValue to set context values that
-// endpoints or other middleware down the line can use.
-func Authenticate(permit func(*http.Request) (*http.Request, error)) MiddlewareFunc {
+// Note that basic authentication is only secure over HTTPS.
+func BasicAuth(realm string, authenticate func(username, password string) error) MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r, err := permit(r)
-			if err != nil {
+			username, password, _ := r.BasicAuth()
+			if err := authenticate(username, password); err != nil {
 				if StatusCode(err) == http.StatusUnauthorized {
 					if w.Header().Get("WWW-Authenticate") == "" {
-						w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s", charset="utf-8"`, r.Host))
+						realm := realm
+						if realm == "" {
+							realm = r.Host
+						}
+						w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s", charset="utf-8"`, realm))
 					}
 				}
 				Error(w, r, err)

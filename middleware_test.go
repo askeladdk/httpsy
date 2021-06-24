@@ -8,25 +8,21 @@ import (
 )
 
 func TestAuthenticate(t *testing.T) {
-	var usernameKey contextKey = "username"
-
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username := GetContextValue(r, usernameKey).(string)
+		username, _, _ := r.BasicAuth()
 		fmt.Fprintf(w, "%s", username)
 	})
 
-	basicAuth := func(r *http.Request) (*http.Request, error) {
-		if username, password, ok := r.BasicAuth(); !ok {
-			return r, StatusUnauthorized
-		} else if username == "gopher" && password == "secret" {
-			return SetContextValue(r, usernameKey, username), nil
+	authenticate := func(username, password string) error {
+		if username == "gopher" && password == "secret" {
+			return nil
 		} else if username == "java" {
-			return r, StatusForbidden
+			return StatusForbidden
 		}
-		return r, StatusUnauthorized
+		return StatusUnauthorized
 	}
 
-	x := Authenticate(basicAuth)(endpoint)
+	x := BasicAuth("", authenticate)(endpoint)
 
 	t.Run("200", func(t *testing.T) {
 		w := httptest.NewRecorder()
