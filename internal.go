@@ -88,5 +88,27 @@ func stringsJoinMap(elems []string, sep string, fn func(string) string) string {
 }
 
 func sameOrigin(url1, url2 *url.URL) bool {
-	return url1.Scheme == url2.Scheme && url1.Host == url2.Host
+	return url1 != nil && url2 != nil && url1.Scheme == url2.Scheme && url1.Host == url2.Host
+}
+
+func sourceOrigin(r *http.Request, fallback *url.URL) *url.URL {
+	if origin := r.Header.Get("Origin"); origin != "" {
+		u, _ := url.Parse(origin)
+		return u
+	} else if referer := r.Header.Get("Referer"); referer != "" {
+		u, _ := url.Parse(referer)
+		return u
+	}
+	return fallback
+}
+
+func targetOrigin(r *http.Request, fallback *url.URL) *url.URL {
+	if xfh := r.Header.Get("X-Forwarded-Host"); xfh != "" {
+		u, _ := url.Parse(xfh)
+		return u
+	} else if host := r.Header.Get("Host"); host != "" {
+		u, _ := url.Parse(host)
+		return u
+	}
+	return fallback
 }
