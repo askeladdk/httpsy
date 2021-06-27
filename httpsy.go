@@ -16,8 +16,6 @@ import (
 	"github.com/askeladdk/httpsy/httpsyproblem"
 )
 
-var keyErrorHandler contextKey = "httpsy error handler"
-
 // SetContextValue is a shorthand to map key to value in the request context.
 func SetContextValue(r *http.Request, key, value interface{}) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), key, value))
@@ -27,8 +25,6 @@ func SetContextValue(r *http.Request, key, value interface{}) *http.Request {
 func ContextValue(r *http.Request, key interface{}) interface{} {
 	return r.Context().Value(key)
 }
-
-var paramMapCtxKey = &struct{}{}
 
 func setParamValue(r *http.Request, key, value string) *http.Request {
 	if v := ContextValue(r, paramMapCtxKey); v != nil {
@@ -71,7 +67,7 @@ func JSONError(w http.ResponseWriter, r *http.Request, err error) {
 // It will use the error handler set with SetErrorHandler or defaults to TextError otherwise.
 func Error(w http.ResponseWriter, r *http.Request, err error) {
 	var errorHandler ErrorHandlerFunc = TextError
-	if h, ok := ContextValue(r, keyErrorHandler).(ErrorHandlerFunc); ok {
+	if h, ok := ContextValue(r, keyErrorHandlerCtxKey).(ErrorHandlerFunc); ok {
 		errorHandler = h
 	}
 	errorHandler(w, r, err)

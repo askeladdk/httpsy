@@ -200,7 +200,7 @@ func WithContextValue(key, value interface{}) MiddlewareFunc {
 
 // SetErrorHandler is a middleware that sets the error handler used by Error.
 func SetErrorHandler(errorHandler ErrorHandlerFunc) MiddlewareFunc {
-	return WithContextValue(keyErrorHandler, errorHandler)
+	return WithContextValue(keyErrorHandlerCtxKey, errorHandler)
 }
 
 // Recoverer recovers from panics by responding with an HTTP 500 internal server error.

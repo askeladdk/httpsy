@@ -22,8 +22,11 @@ func TestProblemContentType(t *testing.T) {
 }
 
 func TestContextKeyTypeOf(t *testing.T) {
-	var k1 contextKey = "test"
-	var k2 string = "test"
+	var k1 = keyErrorHandlerCtxKey
+	var k2 = paramMapCtxKey
+	if k1 == k2 {
+		t.Fatal("k1 == k2")
+	}
 	r := httptest.NewRequest("GET", "/", nil)
 	r = SetContextValue(r, k1, "world")
 	r = SetContextValue(r, k2, "WORLD")

@@ -10,7 +10,10 @@ import (
 	"sync"
 )
 
-type contextKey string
+var (
+	keyErrorHandlerCtxKey = &struct{ byte }{}
+	paramMapCtxKey        = &struct{ byte }{}
+)
 
 type errorString string
 
