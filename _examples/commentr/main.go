@@ -59,7 +59,7 @@ func (s *commentr) ServePost(w http.ResponseWriter, r *http.Request) {
 	s.Lock()
 	defer s.Unlock()
 
-	message := httpsy.GetParamValue(r, "message")
+	message := r.FormValue("message")
 
 	if message != "" {
 		s.posts = append(s.posts, post{message, time.Now()})

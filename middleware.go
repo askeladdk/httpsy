@@ -136,7 +136,7 @@ func BasicAuth(realm string, authenticate func(username, password string) error)
 // from the URL path and stores it as a form value.
 //
 //  Param("orderID") // create the middleware
-//  GetParamValue(r, "orderID") // get the parameter in the handler
+//  ParamValue(r, "orderID") // get the parameter in the handler
 //
 // The URL parameter may optionally be given a pattern constraint
 // that is matched using path.Match by adding a colon followed by the pattern:

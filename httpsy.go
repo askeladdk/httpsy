@@ -23,15 +23,15 @@ func SetContextValue(r *http.Request, key, value interface{}) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), key, value))
 }
 
-// GetContextValue is a shorthand to get a value from the request context.
-func GetContextValue(r *http.Request, key interface{}) interface{} {
+// ContextValue is a shorthand to get a value from the request context.
+func ContextValue(r *http.Request, key interface{}) interface{} {
 	return r.Context().Value(key)
 }
 
 var paramMapCtxKey = &struct{}{}
 
 func setParamValue(r *http.Request, key, value string) *http.Request {
-	if v := GetContextValue(r, paramMapCtxKey); v != nil {
+	if v := ContextValue(r, paramMapCtxKey); v != nil {
 		v.(map[string]string)[key] = value
 		return r
 	}
@@ -39,10 +39,10 @@ func setParamValue(r *http.Request, key, value string) *http.Request {
 	return SetContextValue(r, paramMapCtxKey, m)
 }
 
-// GetParamValue returns the value of an URL parameter
+// ParamValue returns the value of an URL parameter
 // that was parsed by the Param middleware.
-func GetParamValue(r *http.Request, key string) string {
-	if v := GetContextValue(r, paramMapCtxKey); v != nil {
+func ParamValue(r *http.Request, key string) string {
+	if v := ContextValue(r, paramMapCtxKey); v != nil {
 		return v.(map[string]string)[key]
 	}
 	return ""
@@ -71,7 +71,7 @@ func JSONError(w http.ResponseWriter, r *http.Request, err error) {
 // It will use the error handler set with SetErrorHandler or defaults to TextError otherwise.
 func Error(w http.ResponseWriter, r *http.Request, err error) {
 	var errorHandler ErrorHandlerFunc = TextError
-	if h, ok := GetContextValue(r, keyErrorHandler).(ErrorHandlerFunc); ok {
+	if h, ok := ContextValue(r, keyErrorHandler).(ErrorHandlerFunc); ok {
 		errorHandler = h
 	}
 	errorHandler(w, r, err)

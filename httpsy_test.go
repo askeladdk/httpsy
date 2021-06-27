@@ -27,8 +27,8 @@ func TestContextKeyTypeOf(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	r = SetContextValue(r, k1, "world")
 	r = SetContextValue(r, k2, "WORLD")
-	v1 := GetContextValue(r, k1)
-	v2 := GetContextValue(r, k2)
+	v1 := ContextValue(r, k1)
+	v2 := ContextValue(r, k2)
 	if v1 == v2 {
 		t.Fatal()
 	}

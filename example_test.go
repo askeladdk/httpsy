@@ -11,7 +11,7 @@ import (
 // This example demonstrates routing based on an URL parameter and GET request.
 func Example_hello() {
 	hello := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, %s!", httpsy.GetParamValue(r, "you"))
+		fmt.Fprintf(w, "Hello, %s!", httpsy.ParamValue(r, "you"))
 	}
 
 	mux := httpsy.NewServeMux()
@@ -29,7 +29,7 @@ func Example_hello() {
 func Example_routeParam() {
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%s orbits %s",
-			httpsy.GetParamValue(r, "planet"), httpsy.GetParamValue(r, "sun"))
+			httpsy.ParamValue(r, "planet"), httpsy.ParamValue(r, "sun"))
 	}
 
 	mux := httpsy.NewServeMux()
