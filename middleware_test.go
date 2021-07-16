@@ -94,9 +94,11 @@ func TestChainNoCacheRequestID(t *testing.T) {
 func TestIfEndPoint(t *testing.T) {
 	isPost := func(r *http.Request) bool { return r.Method == "POST" }
 
-	unauthorized := EndpointFunc(func(w http.ResponseWriter, r *http.Request) {
-		Error(w, r, StatusUnauthorized)
-	})
+	unauthorized := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			Error(w, r, StatusUnauthorized)
+		})
+	}
 
 	x := IfChain(isPost, unauthorized)(http.HandlerFunc(NoContent))
 

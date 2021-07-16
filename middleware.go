@@ -33,22 +33,6 @@ func (mw Middlewares) Handler(endpoint http.Handler) http.Handler {
 	return h
 }
 
-// Endpoint adapts a handler into a middleware.
-// This middleware does not nothing but return the handler.
-// The handler then becomes the terminal endpoint of the middleware chain.
-func Endpoint(h http.Handler) MiddlewareFunc {
-	return func(_ http.Handler) http.Handler {
-		return h
-	}
-}
-
-// EndpointFunc adapts a handler function into a middleware.
-// This middleware does not nothing but return the handler.
-// The handler then becomes the terminal endpoint of the middleware chain.
-func EndpointFunc(h http.HandlerFunc) MiddlewareFunc {
-	return Endpoint(h)
-}
-
 // AcceptContentTypes only accepts requests that have the Content-Type headers
 // set to one of the given content types.
 // Other requests are responded to with an HTTP 415 unsupported media type.
