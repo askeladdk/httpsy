@@ -46,7 +46,7 @@ func BenchmarkReaderFromBaseline(b *testing.B) {
 
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		buffer := bytes.NewReader(bs)
-		w.(io.ReaderFrom).ReadFrom(buffer)
+		_, _ = io.Copy(w, buffer)
 	})
 
 	b.ResetTimer()
@@ -64,7 +64,7 @@ func BenchmarkReaderFromServerTrace(b *testing.B) {
 
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		buffer := bytes.NewReader(bs)
-		w.(io.ReaderFrom).ReadFrom(buffer)
+		_, _ = io.Copy(w, buffer)
 	})
 
 	middleware := func(next http.Handler) http.Handler {

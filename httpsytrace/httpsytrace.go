@@ -84,7 +84,7 @@ func (w *responseWriterTracer) Push(target string, opts *http.PushOptions) error
 }
 
 func (w *responseWriterTracer) CloseNotify() <-chan bool {
-	return w.ResponseWriter.(http.CloseNotifier).CloseNotify()
+	return w.ResponseWriter.(http.CloseNotifier).CloseNotify() //nolint
 }
 
 func srcIsRegularFile(src io.Reader) (isRegular bool, err error) {
@@ -111,7 +111,7 @@ func (f writerFunc) Write(p []byte) (int, error) {
 }
 
 var byteSlicePool = &sync.Pool{
-	New: func() interface{} { return make([]byte, 32*1024) },
+	New: func() interface{} { return new([]byte) },
 }
 
 func (w *responseWriterTracer) ReadFrom(r io.Reader) (int64, error) {
@@ -131,9 +131,9 @@ func (w *responseWriterTracer) ReadFrom(r io.Reader) (int64, error) {
 	if writerTo, ok := r.(io.WriterTo); ok {
 		return writerTo.WriteTo(wf)
 	}
-	buf := byteSlicePool.Get().([]byte)
+	buf := byteSlicePool.Get().(*[]byte)
 	defer byteSlicePool.Put(buf)
-	return io.CopyBuffer(wf, struct{ io.Reader }{r}, buf)
+	return io.CopyBuffer(wf, struct{ io.Reader }{r}, *buf)
 }
 
 // Wrap hooks the ServerTracer into the ResponseWriter.
@@ -156,7 +156,7 @@ func Wrap(w http.ResponseWriter, tracer ServerTracer) http.ResponseWriter {
 
 	rw := &responseWriterTracer{w, tracer, 0}
 
-	if _, ok := w.(http.CloseNotifier); ok {
+	if _, ok := w.(http.CloseNotifier); ok { //nolint
 		ifaces |= ifaceCloseNotifier // 00001
 	}
 	if _, ok := w.(http.Flusher); ok {

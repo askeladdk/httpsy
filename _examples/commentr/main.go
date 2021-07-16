@@ -88,5 +88,5 @@ func main() {
 		SessionFunc: func(_ *http.Request) (string, bool) { return "", true },
 	}.Handler)
 	mux.Handle("/", s)
-	http.ListenAndServe(":8080", mux)
+	_ = http.ListenAndServe(":8080", mux)
 }

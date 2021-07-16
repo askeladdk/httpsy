@@ -74,5 +74,5 @@ func Example_restful() {
 	s := &commentr{}
 	mux := httpsy.NewServeMux()
 	mux.Handle("/", s)
-	http.ListenAndServe(":8080", mux)
+	_ = http.ListenAndServe(":8080", mux)
 }

@@ -43,7 +43,7 @@ func TestMetricsTrace(t *testing.T) {
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(201)
 		b := bytes.NewBuffer(make([]byte, 4096))
-		io.Copy(w, b)
+		_, _ = io.Copy(w, b)
 	}
 
 	w := httptest.NewRecorder()
@@ -93,7 +93,7 @@ func TestReadFrom(t *testing.T) {
 	}
 
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.(io.ReaderFrom).ReadFrom(bytes.NewReader(body))
+		_, _ = io.Copy(w, struct{ io.Reader }{bytes.NewReader(body)})
 	})
 
 	w := mockReadFromRecorder{httptest.NewRecorder()}
