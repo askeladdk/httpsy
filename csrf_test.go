@@ -6,14 +6,17 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCSRFRequests(t *testing.T) {
 	endpoint := func(w http.ResponseWriter, r *http.Request) {}
 
 	csrf := CSRF{
-		Secret:  "my secret key",
-		FormKey: "csrf-form-key",
+		Secret:      "my secret key",
+		FormKey:     "csrf-form-key",
+		Expires:     10 * time.Minute,
+		SessionFunc: func(_ *http.Request) (string, bool) { return "a", true },
 	}
 
 	x := csrf.Handler(http.HandlerFunc(endpoint))

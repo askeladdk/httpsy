@@ -26,6 +26,7 @@ var indexTemplate = template.Must(template.New("").Funcs(funcMap).Parse(`
 				<form action="/" method="POST">
 					Leave a message: <input type="text" name="message">
 					<input type="submit" value="Submit">
+					<input type="hidden" value="{{.CSRFToken}}" name="__csrf">
 				</form>
 			</div>
 
@@ -47,12 +48,22 @@ type commentr struct {
 	posts []post
 }
 
+func (s *commentr) renderPage(w http.ResponseWriter, r *http.Request) {
+	data := struct {
+		Posts     []post
+		CSRFToken string
+	}{
+		Posts:     s.posts,
+		CSRFToken: w.Header().Get("x-csrf-token"),
+	}
+	renderer := httpsy.TemplateRenderer{indexTemplate, ""}
+	httpsy.Render(w, r, http.StatusOK, data, renderer)
+}
+
 func (s *commentr) ServeGet(w http.ResponseWriter, r *http.Request) {
 	s.RLock()
 	defer s.RUnlock()
-	data := struct{ Posts []post }{s.posts}
-	renderer := httpsy.TemplateRenderer{indexTemplate, ""}
-	httpsy.Render(w, r, http.StatusOK, data, renderer)
+	s.renderPage(w, r)
 }
 
 func (s *commentr) ServePost(w http.ResponseWriter, r *http.Request) {
@@ -65,12 +76,17 @@ func (s *commentr) ServePost(w http.ResponseWriter, r *http.Request) {
 		s.posts = append(s.posts, post{message, time.Now()})
 	}
 
-	http.Redirect(w, r, "/", http.StatusFound)
+	s.renderPage(w, r)
 }
 
 func main() {
 	s := &commentr{}
 	mux := httpsy.NewServeMux()
+	mux.Use(httpsy.CSRF{
+		Secret:      "the eagle lands at midnight",
+		FormKey:     "__csrf",
+		SessionFunc: func(_ *http.Request) (string, bool) { return "", true },
+	}.Handler)
 	mux.Handle("/", s)
 	http.ListenAndServe(":8080", mux)
 }
