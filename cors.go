@@ -28,15 +28,15 @@ type CORS struct {
 	// AllowCredentials sets the Access-Control-Allow-Credentials header.
 	// The header will not be set if Access-Control-Allow-Origin is "*",
 	// as that is disallowed by the standard for security reasons.
-	AllowCredentials bool
+	AllowCredentials bool `json:"allowCredentials" yaml:"allowCredentials"`
 
 	// AllowHeaders sets the Access-Control-Allow-Headers header.
 	// An empty slice reflects the Access-Control-Request-Headers header.
-	AllowHeaders []string
+	AllowHeaders []string `json:"allowHeaders,omitempty" yaml:"allowHeaders,omitempty"`
 
 	// AllowMethods sets the Access-Control-Allow-Methods header.
 	// An empty slice reflects the Access-Control-Request-Method header.
-	AllowMethods []string
+	AllowMethods []string `json:"allowMethods,omitempty" yaml:"allowMethods,omitempty"`
 
 	// AllowOrigins lists all origins that the user agent is allowed to fetch from.
 	// The request Origin header is matched against each element using path.Match.
@@ -44,22 +44,22 @@ type CORS struct {
 	// No CORS headers will be set if no match was found.
 	// The ACAO header is set to "*" if the slice is empty (not recommended).
 	// This field is ignored if AllowOriginFunc is set.
-	AllowOrigins []string
+	AllowOrigins []string `json:"allowOrigins,omitempty" yaml:"allowOrigins,omitempty"`
 
 	// AllowOriginFunc overrides the behaviour for origin matching.
 	// It must return the value of Access-Control-Allow-Origin and whether there was a match.
-	AllowOriginFunc func(r *http.Request) (origin string, ok bool)
+	AllowOriginFunc func(r *http.Request) (origin string, ok bool) `json:"-" yaml:"-"`
 
 	// ExposeHeaders sets the Access-Control-Expose-Headers header.
-	ExposeHeaders []string
+	ExposeHeaders []string `json:"exposeHeaders,omitempty" yaml:"exposeHeaders,omitempty"`
 
 	// MaxAge sets the Access-Control-Max-Age header.
 	// It defaults to -1 if not set.
-	MaxAge time.Duration
+	MaxAge time.Duration `json:"maxAge" yaml:"maxAge"`
 
 	// OptionsPassthrough specifies that the handler should continue to the next one
 	// after the preflight CORS rules have been applied.
-	OptionsPassthrough bool
+	OptionsPassthrough bool `json:"optionsPassthrough" yaml:"optionsPassthrough"`
 }
 
 // Handler returns a middleware handler that applies the CORS configuration.
