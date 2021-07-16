@@ -153,31 +153,15 @@ const (
 	StatusNetworkAuthenticationRequired httpStatus = 511 // RFC 6585, 6
 )
 
-// StatusCoder is an error that is associated with a HTTP status code.
-type StatusCoder interface {
-	error
-	StatusCode() int
-}
-
-type timeouter interface {
-	error
-	Timeout() bool
-}
-
-type temporaryer interface {
-	error
-	Temporary() bool
-}
-
 // StatusCode returns the HTTP status code associated with the error.
 func StatusCode(err error) int {
 	if err == nil {
 		return http.StatusOK
-	} else if sc, ok := err.(StatusCoder); ok {
+	} else if sc, ok := err.(interface{ StatusCode() int }); ok {
 		return sc.StatusCode()
-	} else if to, ok := err.(timeouter); ok && to.Timeout() {
+	} else if to, ok := err.(interface{ Timeout() bool }); ok && to.Timeout() {
 		return http.StatusGatewayTimeout
-	} else if te, ok := err.(temporaryer); ok && te.Temporary() {
+	} else if te, ok := err.(interface{ Temporary() bool }); ok && te.Temporary() {
 		return http.StatusServiceUnavailable
 	}
 	return http.StatusInternalServerError

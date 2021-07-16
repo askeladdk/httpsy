@@ -126,11 +126,11 @@ func TestSetErrorHandlerPanic(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	x := Chain(SetErrorHandler(ErrorHandlerFunc(JSONError)), Recoverer).Handler(endpoint)
+	x := Recoverer(endpoint)
 	x.ServeHTTP(w, r)
 
 	s := w.Body.String()
-	if w.Code != http.StatusInternalServerError || s != "{\"detail\":\"gopher!\",\"status\":500,\"title\":\"Internal Server Error\"}\n" {
+	if w.Code != http.StatusInternalServerError || s != "gopher!\n" {
 		t.Fatal()
 	}
 }

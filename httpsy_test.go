@@ -1,16 +1,19 @@
 package httpsy
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/askeladdk/httpsy/httpsyproblem"
 )
+
+type problemDetailer struct{ error }
+
+func (_ problemDetailer) ProblemDetailer() bool { return true }
 
 func TestProblemContentType(t *testing.T) {
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		Error(w, r, httpsyproblem.Wrap(nil, http.StatusBadRequest))
+		Error(w, r, problemDetailer{errors.New("error")})
 	})
 
 	w := httptest.NewRecorder()

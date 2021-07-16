@@ -18,7 +18,7 @@ type Detailer interface {
 //
 // Additional fields can be added by embedding Details inside another struct:
 //
-//  type MyDetails {
+//  type MyDetails struct {
 //      httpsyproblem.Details
 //      MyCode int `json:"myCode,omitempty"`
 //  }
@@ -77,7 +77,7 @@ func (details *Details) Detailf(format string, a ...interface{}) {
 // Error implements the error interface and returns the Title field.
 func (details Details) Error() string { return details.Title }
 
-// StatusCode implements the httpsy.StatusCoder and returns the Status field.
+// StatusCode returns the Status field.
 func (details Details) StatusCode() int { return details.Status }
 
 // Unwrap implements the interface used by errors.Unwrap() and returns the wrapped error.

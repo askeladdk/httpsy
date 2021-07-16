@@ -5,8 +5,6 @@ import (
 	"html/template"
 	"io"
 	"net/http"
-
-	"github.com/askeladdk/httpsy/httpsyproblem"
 )
 
 // Renderer serialises data to a writer.
@@ -63,7 +61,7 @@ func Render(w http.ResponseWriter, r *http.Request, statusCode int, data interfa
 	defer putBytesBuffer(buffer)
 
 	if err := renderer.Render(buffer, w.Header(), data); err != nil {
-		Error(w, r, httpsyproblem.Wrap(err, http.StatusInternalServerError))
+		Error(w, r, err)
 		return
 	}
 

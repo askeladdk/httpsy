@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"path"
 	"strings"
-
-	"github.com/askeladdk/httpsy/httpsyproblem"
 )
 
 // MiddlewareFunc defines middleware.
@@ -211,16 +209,14 @@ func Recoverer(next http.Handler) http.Handler {
 			if v := recover(); v == http.ErrAbortHandler {
 				panic(v)
 			} else if v != nil {
-				var err error
-				switch x := v.(type) {
+				switch err := v.(type) {
 				case error:
-					err = httpsyproblem.Wrap(x, http.StatusInternalServerError)
+					Error(w, r, err)
 				case string:
-					err = httpsyproblem.Wrap(errorString(x), http.StatusInternalServerError)
+					Error(w, r, errorString(err))
 				default:
-					err = httpsyproblem.Wrap(errorString(fmt.Sprintf("%v", v)), http.StatusInternalServerError)
+					Error(w, r, fmt.Errorf("%v", err))
 				}
-				Error(w, r, err)
 			}
 		}()
 		next.ServeHTTP(w, r)

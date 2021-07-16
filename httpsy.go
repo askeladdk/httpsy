@@ -12,8 +12,6 @@ import (
 	"os"
 	"path"
 	"strings"
-
-	"github.com/askeladdk/httpsy/httpsyproblem"
 )
 
 // SetContextValue is a shorthand to map key to value in the request context.
@@ -55,7 +53,7 @@ func TextError(w http.ResponseWriter, r *http.Request, err error) {
 // JSONError replies to the request with the specified error.
 func JSONError(w http.ResponseWriter, r *http.Request, err error) {
 	// set content type if error is a ProblemDetailer
-	if pd, ok := err.(httpsyproblem.Detailer); ok && pd.ProblemDetailer() {
+	if pd, ok := err.(interface{ ProblemDetailer() bool }); ok && pd.ProblemDetailer() {
 		w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 	}
