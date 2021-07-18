@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"path"
 	"strings"
+
+	"github.com/askeladdk/httpsyproblem"
 )
 
 // MiddlewareFunc defines middleware.
@@ -97,7 +99,7 @@ func BasicAuth(realm string, authenticate func(username, password string) error)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			username, password, _ := r.BasicAuth()
 			if err := authenticate(username, password); err != nil {
-				if StatusCode(err) == http.StatusUnauthorized {
+				if httpsyproblem.StatusCode(err) == http.StatusUnauthorized {
 					if w.Header().Get("WWW-Authenticate") == "" {
 						realm := realm
 						if realm == "" {

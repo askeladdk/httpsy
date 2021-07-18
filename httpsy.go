@@ -12,6 +12,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/askeladdk/httpsyproblem"
 )
 
 // SetContextValue is a shorthand to map key to value in the request context.
@@ -45,26 +47,10 @@ func ParamValue(r *http.Request, key string) string {
 // ErrorHandlerFunc handles an error and generates an appropriate response.
 type ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
 
-// TextError replies to the request with the error in plain text.
-func TextError(w http.ResponseWriter, r *http.Request, err error) {
-	http.Error(w, err.Error(), StatusCode(err))
-}
-
-// JSONError replies to the request with the specified error.
-func JSONError(w http.ResponseWriter, r *http.Request, err error) {
-	// set content type if error is a ProblemDetailer
-	if pd, ok := err.(interface{ ProblemDetailer() bool }); ok && pd.ProblemDetailer() {
-		w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-	}
-
-	JSON(w, r, StatusCode(err), err)
-}
-
 // Error replies to the request with the specified error message.
-// It will use the error handler set with SetErrorHandler or defaults to TextError otherwise.
+// It will use the error handler set with SetErrorHandler or uses httpsyproblem.Error otherwise.
 func Error(w http.ResponseWriter, r *http.Request, err error) {
-	var errorHandler ErrorHandlerFunc = TextError
+	var errorHandler ErrorHandlerFunc = httpsyproblem.Error
 	if h, ok := ContextValue(r, keyErrorHandlerCtxKey).(ErrorHandlerFunc); ok {
 		errorHandler = h
 	}

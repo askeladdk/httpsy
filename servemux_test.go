@@ -43,13 +43,11 @@ func TestServeMux(t *testing.T) {
 
 func TestServeMux404(t *testing.T) {
 	mux := NewServeMux()
-	mux.Use(SetErrorHandler(ErrorHandlerFunc(JSONError)))
 	mux.Route("/test/", func(mux *ServeMux) {})
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/test/q", nil)
 	mux.ServeHTTP(w, r)
-	s := w.Body.String()
-	if w.Code != http.StatusNotFound || s != "{\"status\":404,\"title\":\"Not Found\"}\n" {
+	if w.Code != http.StatusNotFound {
 		t.Fatal()
 	}
 }

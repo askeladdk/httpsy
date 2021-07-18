@@ -56,7 +56,7 @@ func ExampleError() {
 	r := httptest.NewRequest("GET", "/", nil)
 	mux.ServeHTTP(w, r)
 	fmt.Println(w.Body.String())
-	// Output: I'm a teapot
+	// Output: {"status":418,"title":"I'm a teapot","type":"about:blank"}
 }
 
 // This example demonstrates how to use httpsy.If to
