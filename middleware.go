@@ -182,8 +182,8 @@ func WithContextValue(key, value interface{}) MiddlewareFunc {
 	}
 }
 
-// SetErrorHandler is a middleware that sets the error handler used by Error.
-func SetErrorHandler(errorHandler ErrorHandlerFunc) MiddlewareFunc {
+// WithErrorHandler is a middleware that sets the error handler used by Error.
+func WithErrorHandler(errorHandler ErrorHandlerFunc) MiddlewareFunc {
 	return WithContextValue(keyErrorHandlerCtxKey, errorHandler)
 }
 

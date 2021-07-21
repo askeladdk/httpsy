@@ -121,7 +121,7 @@ func TestIfEndPoint(t *testing.T) {
 	})
 }
 
-func TestSetErrorHandlerPanic(t *testing.T) {
+func TestRecoverer(t *testing.T) {
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("gopher!")
 	})

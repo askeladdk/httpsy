@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// ServeMux is an HTTP request multiplexer that can use middleware.
+// ServeMux is a drop-in replacement for http.ServeMux that understands middleware.
 type ServeMux struct {
 	serveMux    http.ServeMux
 	middlewares Middlewares
