@@ -1,9 +1,5 @@
-// Package httpsy (HTT-Peasy) extends and is compatible with the standard library
-// http package to provide more tools for building HTTP services.
-//
-// Using the httpsy.ServeMux as a drop-in replacement for the http.ServeMux,
-// it is easy to build Restful and other kinds of services. Httpsy uses the community standard
-// middleware interface for maximum compatibility.
+// Package httpsy (HTT-Peasy) extends the standard library http package
+// with tools to quickly develop REST services with compatibility and composability in mind.
 package httpsy
 
 import (
@@ -28,18 +24,18 @@ func ContextValue(r *http.Request, key interface{}) interface{} {
 
 func setParamValue(r *http.Request, key, value string) *http.Request {
 	if v := ContextValue(r, paramMapCtxKey); v != nil {
-		v.(map[string]string)[key] = value
+		(*v.(*map[string]string))[key] = value
 		return r
 	}
 	m := map[string]string{key: value}
-	return SetContextValue(r, paramMapCtxKey, m)
+	return SetContextValue(r, paramMapCtxKey, &m)
 }
 
 // ParamValue returns the value of an URL parameter
 // that was parsed by the Param middleware.
 func ParamValue(r *http.Request, key string) string {
 	if v := ContextValue(r, paramMapCtxKey); v != nil {
-		return v.(map[string]string)[key]
+		return (*v.(*map[string]string))[key]
 	}
 	return ""
 }
