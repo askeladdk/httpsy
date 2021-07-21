@@ -132,7 +132,7 @@ func TestSetErrorHandlerPanic(t *testing.T) {
 	x.ServeHTTP(w, r)
 
 	s := w.Body.String()
-	if w.Code != http.StatusInternalServerError || s != "gopher!\n" {
+	if w.Code != http.StatusInternalServerError || s != "Internal Server Error\n" {
 		t.Fatal()
 	}
 }

@@ -13,6 +13,7 @@ func TestProblemContentType(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Add("Accept", "application/json")
 	endpoint.ServeHTTP(w, r)
 	if w.Header().Get("Content-Type") != "application/problem+json; charset=utf-8" {
 		t.Fatal()

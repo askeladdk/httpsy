@@ -54,6 +54,7 @@ func ExampleError() {
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Add("Accept", "application/json")
 	mux.ServeHTTP(w, r)
 	fmt.Println(w.Body.String())
 	// Output: {"status":418,"title":"I'm a teapot","type":"about:blank"}
