@@ -187,6 +187,16 @@ func WithErrorHandler(errorHandler ErrorHandlerFunc) MiddlewareFunc {
 	return WithContextValue(keyErrorHandlerCtxKey, errorHandler)
 }
 
+// WithHeader sets the header to the given value.
+func WithHeader(header, value string) MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set(header, value)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // Recoverer recovers from panics by responding with an HTTP 500 internal server error.
 // The middleware does not recover from http.ErrAbortHandler.
 func Recoverer(next http.Handler) http.Handler {

@@ -154,3 +154,13 @@ func TestRecovererErrAbortHandler(t *testing.T) {
 		Recoverer(endpoint).ServeHTTP(w, r)
 	})
 }
+
+func TestWithHeader(t *testing.T) {
+	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	WithHeader("Server", "Gopher")(endpoint).ServeHTTP(w, r)
+	if w.Header().Get("Server") != "Gopher" {
+		t.Fatal()
+	}
+}
