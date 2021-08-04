@@ -1,10 +1,13 @@
 package httpsy
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestAuthenticate(t *testing.T) {
@@ -163,4 +166,84 @@ func TestWithHeader(t *testing.T) {
 	if w.Header().Get("Server") != "Gopher" {
 		t.Fatal()
 	}
+}
+
+func TestTimeout(t *testing.T) {
+	t.Run("200", func(t *testing.T) {
+		endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(2 * time.Second)
+			_, _ = io.WriteString(w, "hello")
+		})
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		Timeout(3*time.Second, nil)(endpoint).ServeHTTP(w, r)
+
+		if w.Result().StatusCode != http.StatusOK {
+			t.Fatal()
+		}
+
+		if !bytes.HasPrefix(w.Body.Bytes(), []byte("hello")) {
+			t.Fatal()
+		}
+	})
+
+	t.Run("503", func(t *testing.T) {
+		endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(2 * time.Second)
+			_, _ = io.WriteString(w, "hello")
+		})
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		Timeout(1*time.Second, nil)(endpoint).ServeHTTP(w, r)
+
+		if w.Result().StatusCode != http.StatusServiceUnavailable {
+			t.Fatal()
+		}
+
+		if bytes.HasPrefix(w.Body.Bytes(), []byte("hello")) {
+			t.Fatal()
+		}
+	})
+
+	t.Run("panic", func(t *testing.T) {
+		defer func() {
+			if v := recover(); v != io.EOF {
+				t.Fatal()
+			}
+		}()
+
+		endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			panic(io.EOF)
+		})
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		Timeout(1*time.Second, nil)(endpoint).ServeHTTP(w, r)
+	})
+
+	t.Run("cancel", func(t *testing.T) {
+		endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			for {
+				select {
+				case <-r.Context().Done():
+					return
+				default:
+					_, _ = io.WriteString(w, "hello")
+				}
+			}
+		})
+
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		Timeout(1*time.Second, nil)(endpoint).ServeHTTP(w, r)
+		if w.Result().StatusCode != http.StatusServiceUnavailable {
+			t.Fatal()
+		}
+
+		if bytes.HasPrefix(w.Body.Bytes(), []byte("hello")) {
+			t.Fatal()
+		}
+	})
 }

@@ -1,12 +1,18 @@
 package httpsy
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"path"
 	"strings"
+	"sync/atomic"
+	"time"
 
+	"github.com/askeladdk/httpsyhook"
 	"github.com/askeladdk/httpsyproblem"
 )
 
@@ -217,6 +223,85 @@ func Recoverer(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+type timeoutWriter struct {
+	httpsyhook.Struct
+	header   http.Header
+	wbuf     *bytes.Buffer
+	code     int
+	timedOut int32
+}
+
+func (tw *timeoutWriter) HookHeader(w http.ResponseWriter) http.Header {
+	return tw.header
+}
+
+func (tw *timeoutWriter) HookWriteHeader(w http.ResponseWriter, code int) {
+	tw.code = code
+}
+
+func (tw *timeoutWriter) HookWrite(w io.Writer, p []byte) (int, error) {
+	if atomic.LoadInt32(&tw.timedOut) == 1 {
+		return 0, http.ErrHandlerTimeout
+	}
+	return tw.wbuf.Write(p)
+}
+
+// Timeout responds with the given error if the handler takes too long to complete.
+// After a timeout, any further writes to http.ResponseWriter will return http.ErrHandlerTimeout.
+// If err is nil, Timeout will respond with StatusServiceUnavailable.
+func Timeout(after time.Duration, err error) MiddlewareFunc {
+	if err == nil {
+		err = StatusServiceUnavailable
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, cancel := context.WithTimeout(r.Context(), after)
+			defer cancel()
+			r = r.WithContext(ctx)
+
+			tw := timeoutWriter{
+				header: w.Header().Clone(),
+				wbuf:   getBytesBuffer(),
+				code:   http.StatusOK,
+			}
+			defer putBytesBuffer(tw.wbuf)
+			done := make(chan struct{})
+			panicChan := make(chan interface{}, 1)
+
+			go func() {
+				defer func() {
+					if p := recover(); p != nil {
+						panicChan <- p
+					}
+				}()
+				next.ServeHTTP(httpsyhook.Wrap(w, &tw), r)
+				close(done)
+			}()
+
+			select {
+			case p := <-panicChan:
+				panic(p)
+			case <-done:
+				wh := w.Header()
+				for k := range wh {
+					if _, ok := tw.header[k]; !ok {
+						wh.Del(k)
+					}
+				}
+				for k, v := range tw.header {
+					wh[k] = v
+				}
+				w.WriteHeader(tw.code)
+				_, _ = w.Write(tw.wbuf.Bytes())
+			case <-ctx.Done():
+				atomic.StoreInt32(&tw.timedOut, 1)
+				Error(w, r, err)
+			}
+		})
+	}
 }
 
 // RequestID generates a random X-Request-ID header if is it not already set.
