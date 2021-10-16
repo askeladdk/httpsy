@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/askeladdk/httpsyproblem"
 )
 
 func TestAuthenticate(t *testing.T) {
@@ -20,9 +22,9 @@ func TestAuthenticate(t *testing.T) {
 		if username == "gopher" && password == "secret" {
 			return nil
 		} else if username == "java" {
-			return StatusForbidden
+			return httpsyproblem.StatusForbidden
 		}
-		return StatusUnauthorized
+		return httpsyproblem.StatusUnauthorized
 	}
 
 	x := BasicAuth("", authenticate)(endpoint)
@@ -99,7 +101,7 @@ func TestIfEndPoint(t *testing.T) {
 
 	unauthorized := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			Error(w, r, StatusUnauthorized)
+			Error(w, r, httpsyproblem.StatusUnauthorized)
 		})
 	}
 

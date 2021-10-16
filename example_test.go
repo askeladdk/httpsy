@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/askeladdk/httpsy"
+	"github.com/askeladdk/httpsyproblem"
 )
 
 // This example demonstrates routing based on an URL parameter and GET request.
@@ -47,7 +48,7 @@ func Example_routeParam() {
 // Respond to all requests with HTTP 418 I'm a teapot.
 func ExampleError() {
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
-		httpsy.Error(w, r, httpsy.StatusTeapot)
+		httpsy.Error(w, r, httpsyproblem.StatusTeapot)
 	}
 	mux := httpsy.NewServeMux()
 	mux.HandleFunc("/", endpoint)
@@ -70,7 +71,7 @@ func ExampleIf() {
 
 	// Define an authenticator that forbids all authentication attempts.
 	authenticate := func(username, password string) error {
-		return httpsy.StatusForbidden
+		return httpsyproblem.StatusForbidden
 	}
 
 	// Define the ServeMux and apply the If middleware

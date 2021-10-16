@@ -62,7 +62,7 @@ func AcceptContentTypes(contentTypes ...string) MiddlewareFunc {
 			ct = strings.ToLower(ct)
 
 			if !stringsMatch(cts, ct) {
-				Error(w, r, StatusUnsupportedMediaType)
+				Error(w, r, httpsyproblem.StatusUnsupportedMediaType)
 				return
 			}
 
@@ -147,10 +147,10 @@ func Param(param string) MiddlewareFunc {
 			var head string
 			r = cloneRequestURL(r)
 			if head, r.URL.Path = ShiftPath(r.URL.Path); head == "" {
-				Error(w, r, StatusNotFound)
+				Error(w, r, httpsyproblem.StatusNotFound)
 				return
 			} else if ok, _ := path.Match(pattern, head); !ok {
-				Error(w, r, StatusNotFound)
+				Error(w, r, httpsyproblem.StatusNotFound)
 				return
 			} else if name != "" {
 				r = setParamValue(r, name, head)
@@ -253,7 +253,7 @@ func (tw *timeoutWriter) HookWrite(w io.Writer, p []byte) (int, error) {
 // If err is nil, Timeout will respond with StatusServiceUnavailable.
 func Timeout(after time.Duration, err error) MiddlewareFunc {
 	if err == nil {
-		err = StatusServiceUnavailable
+		err = httpsyproblem.StatusServiceUnavailable
 	}
 
 	return func(next http.Handler) http.Handler {

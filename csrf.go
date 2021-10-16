@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"net/http"
 	"time"
+
+	"github.com/askeladdk/httpsyproblem"
 )
 
 // CSRF is a middleware that protects against Cross-Site Request Forgery and BREACH attacks
@@ -73,21 +75,21 @@ func (csrf CSRF) Handler(next http.Handler) http.Handler {
 				source := sourceOrigin(r, r.URL)
 				target := targetOrigin(r, r.URL)
 				if !sameOrigin(source, target) {
-					Error(w, r, StatusForbidden)
+					Error(w, r, httpsyproblem.StatusForbidden)
 					return
 				}
 			}
 
 			// bail if there is no session id
 			if !session {
-				Error(w, r, StatusForbidden)
+				Error(w, r, httpsyproblem.StatusForbidden)
 				return
 			}
 
 			// verify sent token
 			token, _ := b64.DecodeString(csrf.extractToken(r))
 			if !csrfVerifyToken(secret, token, sessionID) {
-				Error(w, r, StatusForbidden)
+				Error(w, r, httpsyproblem.StatusForbidden)
 				return
 			}
 		}

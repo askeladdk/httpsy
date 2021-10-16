@@ -4,11 +4,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/askeladdk/httpsyproblem"
 )
 
 func TestProblemContentType(t *testing.T) {
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		Error(w, r, StatusBadRequest)
+		Error(w, r, httpsyproblem.StatusBadRequest)
 	})
 
 	w := httptest.NewRecorder()

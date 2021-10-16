@@ -3,6 +3,8 @@ package httpsy
 import (
 	"net/http"
 	"strings"
+
+	"github.com/askeladdk/httpsyproblem"
 )
 
 // method handler interfaces idea taken from
@@ -16,7 +18,7 @@ type MethodHandler struct{}
 
 // ServeHTTP implements http.Handler.
 func (m MethodHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 // ConnectHandler replies to CONNECT requests.
@@ -75,7 +77,7 @@ func (f ConnectHandlerFunc) ServeConnect(w http.ResponseWriter, r *http.Request)
 // ServeHTTP implements http.Handler.
 func (f ConnectHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", http.MethodConnect)
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 // DeleteHandlerFunc adapts an ordinary HTTP handler to a DeleteHandler.
@@ -89,7 +91,7 @@ func (f DeleteHandlerFunc) ServeDelete(w http.ResponseWriter, r *http.Request) {
 // ServeHTTP implements http.Handler.
 func (f DeleteHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", http.MethodDelete)
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 // HeadHandlerFunc adapts an ordinary HTTP handler to a HeadHandler.
@@ -103,7 +105,7 @@ func (f HeadHandlerFunc) ServeHead(w http.ResponseWriter, r *http.Request) {
 // ServeHTTP implements http.Handler.
 func (f HeadHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", http.MethodHead)
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 // GetHandlerFunc adapts an ordinary HTTP handler to a GetHandler.
@@ -117,7 +119,7 @@ func (f GetHandlerFunc) ServeGet(w http.ResponseWriter, r *http.Request) {
 // ServeHTTP implements http.Handler.
 func (f GetHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", http.MethodGet)
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 // OptionsHandlerFunc adapts an ordinary HTTP handler to a OptionsHandler.
@@ -131,7 +133,7 @@ func (f OptionsHandlerFunc) ServeOptions(w http.ResponseWriter, r *http.Request)
 // ServeHTTP implements http.Handler.
 func (f OptionsHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", http.MethodOptions)
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 // PatchHandlerFunc adapts an ordinary HTTP handler to a PatchHandler.
@@ -145,7 +147,7 @@ func (f PatchHandlerFunc) ServePatch(w http.ResponseWriter, r *http.Request) {
 // ServeHTTP implements http.Handler.
 func (f PatchHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", http.MethodPatch)
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 // PostHandlerFunc adapts an ordinary HTTP handler to a PostHandler.
@@ -159,7 +161,7 @@ func (f PostHandlerFunc) ServePost(w http.ResponseWriter, r *http.Request) {
 // ServeHTTP implements http.Handler.
 func (f PostHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", http.MethodPost)
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 // PutHandlerFunc adapts an ordinary HTTP handler to a PutHandler.
@@ -173,7 +175,7 @@ func (f PutHandlerFunc) ServePut(w http.ResponseWriter, r *http.Request) {
 // ServeHTTP implements http.Handler.
 func (f PutHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", http.MethodPut)
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 // TraceHandlerFunc adapts an ordinary HTTP handler to a TraceHandler.
@@ -187,7 +189,7 @@ func (f TraceHandlerFunc) ServeTrace(w http.ResponseWriter, r *http.Request) {
 // ServeHTTP implements http.Handler.
 func (f TraceHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", http.MethodTrace)
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 type discardResponseWriter struct{ http.ResponseWriter }
@@ -213,7 +215,7 @@ func (f GetHeadHandlerFunc) ServeHead(w http.ResponseWriter, r *http.Request) {
 // ServeHTTP implements http.Handler.
 func (f GetHeadHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Allow", "GET, HEAD")
-	Error(w, r, StatusMethodNotAllowed)
+	Error(w, r, httpsyproblem.StatusMethodNotAllowed)
 }
 
 func isMethodHandler(handler http.Handler) bool {

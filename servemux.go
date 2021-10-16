@@ -3,6 +3,8 @@ package httpsy
 import (
 	"net/http"
 	"strings"
+
+	"github.com/askeladdk/httpsyproblem"
 )
 
 // ServeMux is a drop-in replacement for http.ServeMux that understands middleware.
@@ -107,7 +109,7 @@ func (mux *ServeMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if r.ProtoAtLeast(1, 1) {
 			w.Header().Set("Connection", "close")
 		}
-		Error(w, r, StatusBadRequest)
+		Error(w, r, httpsyproblem.StatusBadRequest)
 		return
 	}
 	h, _ := mux.Handler(r)

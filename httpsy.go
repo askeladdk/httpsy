@@ -44,9 +44,9 @@ func ParamValue(r *http.Request, key string) string {
 type ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
 
 // Error replies to the request with the specified error message.
-// It will use the error handler set with SetErrorHandler or uses httpsyproblem.Error otherwise.
+// It will use the error handler set with SetErrorHandler or uses httpsyproblem.Serve otherwise.
 func Error(w http.ResponseWriter, r *http.Request, err error) {
-	var errorHandler ErrorHandlerFunc = httpsyproblem.Error
+	var errorHandler ErrorHandlerFunc = httpsyproblem.Serve
 	if h, ok := ContextValue(r, keyErrorHandlerCtxKey).(ErrorHandlerFunc); ok {
 		errorHandler = h
 	}
@@ -55,7 +55,7 @@ func Error(w http.ResponseWriter, r *http.Request, err error) {
 
 // NotFound replies to the request with an HTTP 404 not found error.
 func NotFound(w http.ResponseWriter, r *http.Request) {
-	Error(w, r, StatusNotFound)
+	Error(w, r, httpsyproblem.StatusNotFound)
 }
 
 // ShiftPath splits off the first component of p, which will be cleaned of
@@ -92,7 +92,7 @@ func StripPrefix(prefix string, h http.Handler) http.Handler {
 			h.ServeHTTP(w, r2)
 			return
 		}
-		Error(w, r, StatusNotFound)
+		Error(w, r, httpsyproblem.StatusNotFound)
 	})
 }
 
