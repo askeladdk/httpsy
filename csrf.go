@@ -35,7 +35,7 @@ type CSRF struct {
 	// This field is ignored if ExemptFunc is set.
 	ExemptPaths []string `json:"exemptPaths,omitempty" yaml:"exemptPaths,omitempty"`
 
-	// ExemptFunc is optional and reports whether the request should be exempt from CSRF validation.
+	// ExemptFunc reports whether the request should be exempt from CSRF validation (optional).
 	ExemptFunc func(*http.Request) bool `json:"-" yaml:"-"`
 
 	// Expires is the duration that a CSRF token is valid (required).
