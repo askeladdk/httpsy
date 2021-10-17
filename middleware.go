@@ -316,19 +316,17 @@ func RequestID(next http.Handler) http.Handler {
 	})
 }
 
-// If applies the middleware only if the condition is true.
-func If(cond func(*http.Request) bool, then MiddlewareFunc) MiddlewareFunc {
+// If applies the middlewares only if the condition is true.
+func If(cond func(*http.Request) bool, then ...MiddlewareFunc) MiddlewareFunc {
+	chain := Chain(then...)
 	return func(next http.Handler) http.Handler {
+		branch := chain.Handler(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if cond(r) {
-				next = then(next)
+				branch.ServeHTTP(w, r)
+				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-// IfChain applies the middlewares only if the condition is true.
-func IfChain(cond func(*http.Request) bool, then ...MiddlewareFunc) MiddlewareFunc {
-	return If(cond, Chain(then...).Handler)
 }

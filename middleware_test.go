@@ -105,7 +105,7 @@ func TestIfEndPoint(t *testing.T) {
 		})
 	}
 
-	x := IfChain(isPost, unauthorized)(http.HandlerFunc(NoContent))
+	x := If(isPost, unauthorized)(http.HandlerFunc(NoContent))
 
 	t.Run("204", func(t *testing.T) {
 		w := httptest.NewRecorder()
