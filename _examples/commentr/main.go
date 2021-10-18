@@ -86,7 +86,7 @@ func main() {
 		Secret:      "the eagle lands at midnight",
 		FormKey:     "__csrf",
 		SessionFunc: func(_ *http.Request) (string, bool) { return "", true },
-	}.Handler)
+	}.Handle)
 	mux.Handle("/", s)
 	_ = http.ListenAndServe(":8080", mux)
 }

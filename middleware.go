@@ -22,13 +22,8 @@ type MiddlewareFunc func(http.Handler) http.Handler
 // Middlewares is a slice of middlewares that are applied sequentially to an endpoint.
 type Middlewares []MiddlewareFunc
 
-// Chain creates a Middlewares type from its arguments.
-func Chain(mws ...MiddlewareFunc) Middlewares {
-	return Middlewares(mws)
-}
-
-// Handler applies the Middlewares to the endpoint.
-func (mw Middlewares) Handler(endpoint http.Handler) http.Handler {
+// Handle applies the Middlewares to the endpoint.
+func (mw Middlewares) Handle(endpoint http.Handler) http.Handler {
 	if len(mw) == 0 {
 		return endpoint
 	}
@@ -39,6 +34,11 @@ func (mw Middlewares) Handler(endpoint http.Handler) http.Handler {
 	}
 
 	return h
+}
+
+// HandleFunc applies the Middlewares to the endpoint.
+func (mw Middlewares) HandleFunc(endpoint http.HandlerFunc) http.Handler {
+	return mw.Handle(endpoint)
 }
 
 // AcceptContentTypes only accepts requests that have the Content-Type headers
@@ -318,9 +318,8 @@ func RequestID(next http.Handler) http.Handler {
 
 // If applies the middlewares only if the condition is true.
 func If(cond func(*http.Request) bool, then ...MiddlewareFunc) MiddlewareFunc {
-	chain := Chain(then...)
 	return func(next http.Handler) http.Handler {
-		branch := chain.Handler(next)
+		branch := Middlewares(then).Handle(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if cond(r) {
 				branch.ServeHTTP(w, r)

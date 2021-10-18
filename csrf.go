@@ -52,8 +52,8 @@ type CSRF struct {
 	SessionFunc func(*http.Request) (sessionID string, ok bool) `json:"-" yaml:"-"`
 }
 
-// Handler returns a middleware handler that applies the CSRF configuration.
-func (csrf CSRF) Handler(next http.Handler) http.Handler {
+// Handle returns a middleware handler that applies the CSRF configuration.
+func (csrf CSRF) Handle(next http.Handler) http.Handler {
 	// sanity checks
 	if csrf.Secret == "" {
 		panic("csrf: no secret")

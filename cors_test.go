@@ -27,7 +27,7 @@ func TestCORS(t *testing.T) {
 		MaxAge:       24 * time.Hour,
 	}
 
-	x := cors.Handler(Methods(endpoint))
+	x := cors.Handle(Methods(endpoint))
 
 	t.Run("no-origin", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -126,7 +126,7 @@ func TestCORSDefaults(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	x := CORS{}.Handler(endpoint)
+	x := CORS{}.Handle(endpoint)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("OPTIONS", "/", nil)

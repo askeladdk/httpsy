@@ -89,7 +89,7 @@ func TestParam(t *testing.T) {
 func TestChainNoCacheRequestID(t *testing.T) {
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/", nil)
-	x := Chain(NoCache, RequestID).Handler(http.HandlerFunc(NoContent))
+	x := Middlewares{NoCache, RequestID}.Handle(http.HandlerFunc(NoContent))
 	x.ServeHTTP(w, r)
 	if w.Header().Get("Expires") == "" || r.Header.Get("X-Request-ID") == "" {
 		t.Fatal()

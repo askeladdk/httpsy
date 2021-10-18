@@ -19,7 +19,7 @@ func TestCSRFRequests(t *testing.T) {
 		SessionFunc: func(_ *http.Request) (string, bool) { return "a", true },
 	}
 
-	x := csrf.Handler(http.HandlerFunc(endpoint))
+	x := csrf.Handle(http.HandlerFunc(endpoint))
 
 	var token string
 

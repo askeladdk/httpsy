@@ -25,7 +25,7 @@ func (mux *ServeMux) Use(mws ...MiddlewareFunc) {
 
 // Handle adds a route and applies middlewares to it.
 func (mux *ServeMux) Handle(pattern string, handler http.Handler) {
-	mux.serveMux.Handle(pattern, mux.middlewares.Handler(Methods(handler)))
+	mux.serveMux.Handle(pattern, mux.middlewares.Handle(Methods(handler)))
 }
 
 // HandleFunc adds a route and applies middlewares to it.

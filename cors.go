@@ -62,8 +62,8 @@ type CORS struct {
 	OptionsPassthrough bool `json:"optionsPassthrough" yaml:"optionsPassthrough"`
 }
 
-// Handler returns a middleware handler that applies the CORS configuration.
-func (cors CORS) Handler(next http.Handler) http.Handler {
+// Handle returns a middleware handler that applies the CORS configuration.
+func (cors CORS) Handle(next http.Handler) http.Handler {
 	var (
 		allowMethods  = strings.Join(cors.AllowMethods, ", ")
 		allowHeaders  = stringsJoinMap(cors.AllowHeaders, ", ", textproto.CanonicalMIMEHeaderKey)
