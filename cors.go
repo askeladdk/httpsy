@@ -5,7 +5,6 @@ import (
 	"net/textproto"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // CORS is a middleware for Cross-Origin Resource Sharing.
@@ -53,9 +52,9 @@ type CORS struct {
 	// ExposeHeaders sets the Access-Control-Expose-Headers header.
 	ExposeHeaders []string `json:"exposeHeaders,omitempty" yaml:"exposeHeaders,omitempty"`
 
-	// MaxAge sets the Access-Control-Max-Age header.
+	// MaxAge (seconds) sets the Access-Control-Max-Age header.
 	// It defaults to -1 if not set.
-	MaxAge time.Duration `json:"maxAge" yaml:"maxAge"`
+	MaxAge int `json:"maxAge" yaml:"maxAge"`
 
 	// OptionsPassthrough specifies that the handler should continue to the next one
 	// after the preflight CORS rules have been applied.
@@ -72,8 +71,8 @@ func (cors CORS) Handle(next http.Handler) http.Handler {
 		allowOrigins  []string
 	)
 
-	if cors.MaxAge >= time.Second {
-		maxAge = strconv.Itoa(int(cors.MaxAge.Seconds()))
+	if cors.MaxAge > 0 {
+		maxAge = strconv.Itoa(int(cors.MaxAge))
 	}
 
 	for _, s := range cors.AllowOrigins {

@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 )
 
 func assertHeaders(t *testing.T, h http.Header, expected map[string]string) {
@@ -24,7 +23,7 @@ func TestCORS(t *testing.T) {
 		AllowHeaders: []string{"X-Requested-With"},
 		AllowMethods: []string{"GET", "OPTIONS"},
 		AllowOrigins: []string{"https://example.com"},
-		MaxAge:       24 * time.Hour,
+		MaxAge:       24 * 60 * 60,
 	}
 
 	x := cors.Handle(Methods(endpoint))
