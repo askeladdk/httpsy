@@ -53,7 +53,7 @@ type CSRF struct {
 }
 
 // Handle returns a middleware handler that applies the CSRF configuration.
-func (csrf CSRF) Handle(next http.Handler) http.Handler {
+func (csrf *CSRF) Handle(next http.Handler) http.Handler {
 	// sanity checks
 	if csrf.Secret == "" {
 		panic("csrf: no secret")

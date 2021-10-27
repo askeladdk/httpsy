@@ -62,7 +62,7 @@ type CORS struct {
 }
 
 // Handle returns a middleware handler that applies the CORS configuration.
-func (cors CORS) Handle(next http.Handler) http.Handler {
+func (cors *CORS) Handle(next http.Handler) http.Handler {
 	var (
 		allowMethods  = strings.Join(cors.AllowMethods, ", ")
 		allowHeaders  = stringsJoinMap(cors.AllowHeaders, ", ", textproto.CanonicalMIMEHeaderKey)

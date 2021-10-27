@@ -125,7 +125,7 @@ func TestCORSDefaults(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	x := CORS{}.Handle(endpoint)
+	x := new(CORS).Handle(endpoint)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("OPTIONS", "/", nil)
