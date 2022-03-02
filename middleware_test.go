@@ -1,13 +1,10 @@
 package httpsy
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/askeladdk/httpsyproblem"
 )
@@ -60,12 +57,12 @@ func TestAuthenticate(t *testing.T) {
 	})
 }
 
-func TestParam(t *testing.T) {
+func TestRouteParam(t *testing.T) {
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "%s", ParamValue(r, "a"))
+		fmt.Fprintf(w, "%s", RouteParamValue(r, "a"))
 	})
 
-	x := Param("a:*[a-z]")(endpoint)
+	x := RouteParam("a:*[a-z]")(endpoint)
 
 	t.Run("200", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -86,26 +83,16 @@ func TestParam(t *testing.T) {
 	})
 }
 
-func TestChainNoCacheRequestID(t *testing.T) {
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/", nil)
-	x := Middlewares{NoCache, RequestID}.Handle(http.HandlerFunc(NoContent))
-	x.ServeHTTP(w, r)
-	if w.Header().Get("Expires") == "" || r.Header.Get("X-Request-ID") == "" {
-		t.Fatal()
-	}
-}
-
 func TestIfEndPoint(t *testing.T) {
 	isPost := func(r *http.Request) bool { return r.Method == "POST" }
 
-	unauthorized := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			Error(w, r, httpsyproblem.StatusUnauthorized)
-		})
-	}
+	unauthorized := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		Error(w, r, httpsyproblem.StatusUnauthorized)
+	})
 
-	x := If(isPost, unauthorized)(http.HandlerFunc(NoContent))
+	x := If(isPost, unauthorized)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
 
 	t.Run("204", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -144,7 +131,7 @@ func TestRecoverer(t *testing.T) {
 
 func TestRecovererErrAbortHandler(t *testing.T) {
 	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		panic(http.ErrAbortHandler)
+		panic(fmt.Errorf("panic!"))
 	})
 
 	w := httptest.NewRecorder()
@@ -152,100 +139,10 @@ func TestRecovererErrAbortHandler(t *testing.T) {
 
 	t.Run("run", func(t *testing.T) {
 		defer func() {
-			if v := recover(); v != http.ErrAbortHandler {
+			if v := recover(); v != nil {
 				t.Fatal()
 			}
 		}()
 		Recoverer(endpoint).ServeHTTP(w, r)
-	})
-}
-
-func TestWithHeader(t *testing.T) {
-	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest("GET", "/", nil)
-	WithHeader("Server", "Gopher")(endpoint).ServeHTTP(w, r)
-	if w.Header().Get("Server") != "Gopher" {
-		t.Fatal()
-	}
-}
-
-func TestTimeout(t *testing.T) {
-	t.Run("200", func(t *testing.T) {
-		endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			time.Sleep(2 * time.Second)
-			_, _ = io.WriteString(w, "hello")
-		})
-
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/", nil)
-		Timeout(3*time.Second, nil)(endpoint).ServeHTTP(w, r)
-
-		if w.Result().StatusCode != http.StatusOK {
-			t.Fatal()
-		}
-
-		if !bytes.HasPrefix(w.Body.Bytes(), []byte("hello")) {
-			t.Fatal()
-		}
-	})
-
-	t.Run("503", func(t *testing.T) {
-		endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			time.Sleep(2 * time.Second)
-			_, _ = io.WriteString(w, "hello")
-		})
-
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/", nil)
-		Timeout(1*time.Second, nil)(endpoint).ServeHTTP(w, r)
-
-		if w.Result().StatusCode != http.StatusServiceUnavailable {
-			t.Fatal()
-		}
-
-		if bytes.HasPrefix(w.Body.Bytes(), []byte("hello")) {
-			t.Fatal()
-		}
-	})
-
-	t.Run("panic", func(t *testing.T) {
-		defer func() {
-			if v := recover(); v != io.EOF {
-				t.Fatal()
-			}
-		}()
-
-		endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			panic(io.EOF)
-		})
-
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/", nil)
-		Timeout(1*time.Second, nil)(endpoint).ServeHTTP(w, r)
-	})
-
-	t.Run("cancel", func(t *testing.T) {
-		endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			for {
-				select {
-				case <-r.Context().Done():
-					return
-				default:
-					_, _ = io.WriteString(w, "hello")
-				}
-			}
-		})
-
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/", nil)
-		Timeout(1*time.Second, nil)(endpoint).ServeHTTP(w, r)
-		if w.Result().StatusCode != http.StatusServiceUnavailable {
-			t.Fatal()
-		}
-
-		if bytes.HasPrefix(w.Body.Bytes(), []byte("hello")) {
-			t.Fatal()
-		}
 	})
 }

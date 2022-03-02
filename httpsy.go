@@ -12,29 +12,24 @@ import (
 	"github.com/askeladdk/httpsyproblem"
 )
 
-// SetContextValue is a shorthand to map key to value in the request context.
-func SetContextValue(r *http.Request, key, value interface{}) *http.Request {
+// WithContextValue is a shorthand to map key to value in the request context.
+func WithContextValue(r *http.Request, key, value interface{}) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), key, value))
 }
 
-// ContextValue is a shorthand to get a value from the request context.
-func ContextValue(r *http.Request, key interface{}) interface{} {
-	return r.Context().Value(key)
-}
-
 func setParamValue(r *http.Request, key, value string) *http.Request {
-	if v := ContextValue(r, paramMapCtxKey); v != nil {
+	if v := r.Context().Value(paramMapCtxKey); v != nil {
 		(*v.(*map[string]string))[key] = value
 		return r
 	}
 	m := map[string]string{key: value}
-	return SetContextValue(r, paramMapCtxKey, &m)
+	return WithContextValue(r, paramMapCtxKey, &m)
 }
 
-// ParamValue returns the value of an URL parameter
-// that was parsed by the Param middleware.
-func ParamValue(r *http.Request, key string) string {
-	if v := ContextValue(r, paramMapCtxKey); v != nil {
+// RouteParamValue returns the value of an URL parameter
+// that was parsed by the RouteParam middleware.
+func RouteParamValue(r *http.Request, key string) string {
+	if v := r.Context().Value(paramMapCtxKey); v != nil {
 		return (*v.(*map[string]string))[key]
 	}
 	return ""
@@ -47,15 +42,10 @@ type ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
 // It will use the error handler set with SetErrorHandler or uses httpsyproblem.Serve otherwise.
 func Error(w http.ResponseWriter, r *http.Request, err error) {
 	var errorHandler ErrorHandlerFunc = httpsyproblem.Serve
-	if h, ok := ContextValue(r, keyErrorHandlerCtxKey).(ErrorHandlerFunc); ok {
+	if h, ok := r.Context().Value(keyErrorHandlerCtxKey).(ErrorHandlerFunc); ok {
 		errorHandler = h
 	}
 	errorHandler(w, r, err)
-}
-
-// NotFound replies to the request with an HTTP 404 not found error.
-func NotFound(w http.ResponseWriter, r *http.Request) {
-	Error(w, r, httpsyproblem.StatusNotFound)
 }
 
 // ShiftPath splits off the first component of p, which will be cleaned of
@@ -87,19 +77,13 @@ func StripPrefix(prefix string, h http.Handler) http.Handler {
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if p := strings.TrimPrefix(r.URL.Path, prefix); len(p) < len(r.URL.Path) {
-			r2 := cloneRequestURL(r)
-			r2.URL.Path = p
-			h.ServeHTTP(w, r2)
+			r = cloneRequestURL(r)
+			r.URL.Path = p
+			h.ServeHTTP(w, r)
 			return
 		}
 		Error(w, r, httpsyproblem.StatusNotFound)
 	})
-}
-
-// NoContent responds with HTTP 204 no content.
-// Use it to implement healthcheck endpoints.
-func NoContent(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // Safe returns true if the request method is one of GET, HEAD, OPTIONS, TRACE.

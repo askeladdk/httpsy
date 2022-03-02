@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/askeladdk/httpsyproblem"
 )
 
 func assertHeaders(t *testing.T, h http.Header, expected map[string]string) {
@@ -15,7 +17,11 @@ func assertHeaders(t *testing.T, h http.Header, expected map[string]string) {
 }
 
 func TestCORS(t *testing.T) {
-	endpoint := GetHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	endpoint := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			Error(w, r, httpsyproblem.StatusMethodNotAllowed)
+			return
+		}
 		w.WriteHeader(http.StatusNoContent)
 	})
 
@@ -26,7 +32,7 @@ func TestCORS(t *testing.T) {
 		MaxAge:       24 * 60 * 60,
 	}
 
-	x := cors.Handle(Methods(endpoint))
+	x := cors.Handle(endpoint)
 
 	t.Run("no-origin", func(t *testing.T) {
 		w := httptest.NewRecorder()

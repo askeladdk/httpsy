@@ -1,72 +1,43 @@
 package httpsy
 
 import (
-	"bytes"
-	"context"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"path"
 	"strings"
-	"sync/atomic"
-	"time"
 
-	"github.com/askeladdk/httpsyhook"
 	"github.com/askeladdk/httpsyproblem"
 )
-
-// MiddlewareFunc defines middleware.
-type MiddlewareFunc func(http.Handler) http.Handler
-
-// Middlewares is a slice of middlewares that are applied sequentially to an endpoint.
-type Middlewares []MiddlewareFunc
-
-// Handle applies the Middlewares to the endpoint.
-func (mw Middlewares) Handle(endpoint http.Handler) http.Handler {
-	if len(mw) == 0 {
-		return endpoint
-	}
-
-	h := mw[len(mw)-1](endpoint)
-	for i := len(mw) - 2; i >= 0; i-- {
-		h = mw[i](h)
-	}
-
-	return h
-}
-
-// HandleFunc applies the Middlewares to the endpoint.
-func (mw Middlewares) HandleFunc(endpoint http.HandlerFunc) http.Handler {
-	return mw.Handle(endpoint)
-}
 
 // AcceptContentTypes only accepts requests that have the Content-Type headers
 // set to one of the given content types.
 // Other requests are responded to with an HTTP 415 unsupported media type.
-// Content types are matched using path.Match and can contain wildcards.
-func AcceptContentTypes(contentTypes ...string) MiddlewareFunc {
-	cts := make([]string, len(contentTypes))
-	for i, ct := range contentTypes {
-		cts[i] = strings.ToLower(ct)
+func AllowContentType(contentTypes ...string) func(http.Handler) http.Handler {
+	allowedContentTypes := make(map[string]struct{}, len(contentTypes))
+	for _, ctype := range contentTypes {
+		allowedContentTypes[strings.TrimSpace(strings.ToLower(ctype))] = struct{}{}
 	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ct := r.Header.Get("Content-Type")
-			if i := strings.Index(ct, ";"); i >= 0 {
-				ct = ct[:i]
-			}
-
-			ct = strings.TrimSpace(ct)
-			ct = strings.ToLower(ct)
-
-			if !stringsMatch(cts, ct) {
-				Error(w, r, httpsyproblem.StatusUnsupportedMediaType)
+			if r.ContentLength == 0 {
+				// skip check for empty content body
+				next.ServeHTTP(w, r)
 				return
 			}
 
-			next.ServeHTTP(w, r)
+			s := strings.ToLower(strings.TrimSpace(r.Header.Get("Content-Type")))
+			if i := strings.Index(s, ";"); i > -1 {
+				s = s[0:i]
+			}
+
+			if _, ok := allowedContentTypes[s]; ok {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			Error(w, r, httpsyproblem.StatusUnsupportedMediaType)
 		})
 	}
 }
@@ -100,7 +71,7 @@ func RealIP(next http.Handler) http.Handler {
 // using the realm argument. If the realm argument is empty, the realm is set to the hostname.
 //
 // Note that basic authentication is only secure over HTTPS.
-func BasicAuth(realm string, authenticate func(username, password string) error) MiddlewareFunc {
+func BasicAuth(realm string, authenticate func(username, password string) error) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			username, password, _ := r.BasicAuth()
@@ -122,20 +93,20 @@ func BasicAuth(realm string, authenticate func(username, password string) error)
 	}
 }
 
-// Param is a middleware that extracts the head URL parameter
+// RouteParam is a middleware that extracts the head URL parameter
 // from the URL path and stores it as a form value.
 //
-//  Param("orderID") // create the middleware
-//  ParamValue(r, "orderID") // get the parameter in the handler
+//  RouteParam("orderID") // create the middleware
+//  RouteParamValue(r, "orderID") // get the parameter in the handler
 //
 // The URL parameter may optionally be given a pattern constraint
 // that is matched using path.Match by adding a colon followed by the pattern:
-//  Param("myparam:?*") // matches any sequence of one or more characters
+//  RouteParam("myparam:?*") // matches any sequence of one or more characters
 //
 // It is also possible to use an empty name. In this case the pattern
 // constraint is applied but the value is not stored in the form values:
-//  Param(":v[12]") // routes /v1 and /v2 to the same handler
-func Param(param string) MiddlewareFunc {
+//  RouteParam(":v[12]") // routes /v1 and /v2 to the same handler
+func RouteParam(param string) func(http.Handler) http.Handler {
 	name, pattern := param, "?*"
 
 	if i := strings.Index(param, ":"); i >= 0 {
@@ -179,26 +150,11 @@ func NoCache(next http.Handler) http.Handler {
 	})
 }
 
-// WithContextValue maps the key to the value in the request context.
-func WithContextValue(key, value interface{}) MiddlewareFunc {
+// SetErrorHandler is a middleware that sets the error handler used by Error.
+func SetErrorHandler(h ErrorHandlerFunc) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, SetContextValue(r, key, value))
-		})
-	}
-}
-
-// WithErrorHandler is a middleware that sets the error handler used by Error.
-func WithErrorHandler(errorHandler ErrorHandlerFunc) MiddlewareFunc {
-	return WithContextValue(keyErrorHandlerCtxKey, errorHandler)
-}
-
-// WithHeader sets the header to the given value.
-func WithHeader(header, value string) MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set(header, value)
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, WithContextValue(r, keyErrorHandlerCtxKey, h))
 		})
 	}
 }
@@ -208,14 +164,12 @@ func WithHeader(header, value string) MiddlewareFunc {
 func Recoverer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			if v := recover(); v == http.ErrAbortHandler {
-				panic(v)
-			} else if v != nil {
+			if v := recover(); v != nil && v != http.ErrAbortHandler {
 				switch err := v.(type) {
 				case error:
 					Error(w, r, err)
 				case string:
-					Error(w, r, errorString(err))
+					Error(w, r, fmt.Errorf(err))
 				default:
 					Error(w, r, fmt.Errorf("%v", err))
 				}
@@ -225,104 +179,12 @@ func Recoverer(next http.Handler) http.Handler {
 	})
 }
 
-type timeoutWriter struct {
-	httpsyhook.Struct
-	header   http.Header
-	wbuf     *bytes.Buffer
-	code     int
-	timedOut int32
-}
-
-func (tw *timeoutWriter) HookHeader(w http.ResponseWriter) http.Header {
-	return tw.header
-}
-
-func (tw *timeoutWriter) HookWriteHeader(w http.ResponseWriter, code int) {
-	tw.code = code
-}
-
-func (tw *timeoutWriter) HookWrite(w io.Writer, p []byte) (int, error) {
-	if atomic.LoadInt32(&tw.timedOut) == 1 {
-		return 0, http.ErrHandlerTimeout
-	}
-	return tw.wbuf.Write(p)
-}
-
-// Timeout responds with the given error if the handler takes too long to complete.
-// After a timeout, any further writes to http.ResponseWriter will return http.ErrHandlerTimeout.
-// If err is nil, Timeout will respond with StatusServiceUnavailable.
-func Timeout(after time.Duration, err error) MiddlewareFunc {
-	if err == nil {
-		err = httpsyproblem.StatusServiceUnavailable
-	}
-
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, cancel := context.WithTimeout(r.Context(), after)
-			defer cancel()
-			r = r.WithContext(ctx)
-
-			tw := timeoutWriter{
-				header: w.Header().Clone(),
-				wbuf:   getBytesBuffer(),
-				code:   http.StatusOK,
-			}
-			defer putBytesBuffer(tw.wbuf)
-			done := make(chan struct{})
-			panicChan := make(chan interface{}, 1)
-
-			go func() {
-				defer func() {
-					if p := recover(); p != nil {
-						panicChan <- p
-					}
-				}()
-				next.ServeHTTP(httpsyhook.Wrap(w, &tw), r)
-				close(done)
-			}()
-
-			select {
-			case p := <-panicChan:
-				panic(p)
-			case <-done:
-				wh := w.Header()
-				for k := range wh {
-					if _, ok := tw.header[k]; !ok {
-						wh.Del(k)
-					}
-				}
-				for k, v := range tw.header {
-					wh[k] = v
-				}
-				w.WriteHeader(tw.code)
-				_, _ = w.Write(tw.wbuf.Bytes())
-			case <-ctx.Done():
-				atomic.StoreInt32(&tw.timedOut, 1)
-				Error(w, r, err)
-			}
-		})
-	}
-}
-
-// RequestID generates a random X-Request-ID header if is it not already set.
-func RequestID(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Request-ID") == "" {
-			var id [32]byte
-			randomNoise(id[:])
-			r.Header.Set("X-Request-ID", bytesToASCII(id[:]))
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 // If applies the middlewares only if the condition is true.
-func If(cond func(*http.Request) bool, then ...MiddlewareFunc) MiddlewareFunc {
+func If(cond func(*http.Request) bool, then http.Handler) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		branch := Middlewares(then).Handle(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if cond(r) {
-				branch.ServeHTTP(w, r)
+				then.ServeHTTP(w, r)
 				return
 			}
 			next.ServeHTTP(w, r)

@@ -43,7 +43,6 @@ type post struct {
 }
 
 type commentr struct {
-	httpsy.MethodHandler
 	sync.RWMutex
 	posts []post
 }
@@ -56,37 +55,36 @@ func (s *commentr) renderPage(w http.ResponseWriter, r *http.Request) {
 		Posts:     s.posts,
 		CSRFToken: w.Header().Get("x-csrf-token"),
 	}
-	renderer := httpsy.TemplateRenderer{indexTemplate, ""}
-	httpsy.Render(w, r, http.StatusOK, data, renderer)
+	renderer := httpsy.TemplateRenderer{Template: indexTemplate}
+	httpsy.Render(renderer, w, r, http.StatusOK, data)
 }
 
-func (s *commentr) ServeGet(w http.ResponseWriter, r *http.Request) {
-	s.RLock()
-	defer s.RUnlock()
-	s.renderPage(w, r)
-}
-
-func (s *commentr) ServePost(w http.ResponseWriter, r *http.Request) {
-	s.Lock()
-	defer s.Unlock()
-
-	message := r.FormValue("message")
-
-	if message != "" {
-		s.posts = append(s.posts, post{message, time.Now()})
+func (s *commentr) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.RLock()
+		defer s.RUnlock()
+		s.renderPage(w, r)
+	case http.MethodPost:
+		s.Lock()
+		defer s.Unlock()
+		message := r.FormValue("message")
+		if message != "" {
+			s.posts = append(s.posts, post{message, time.Now()})
+		}
+		s.renderPage(w, r)
 	}
-
-	s.renderPage(w, r)
 }
 
 func main() {
 	s := &commentr{}
-	mux := httpsy.NewServeMux()
-	mux.Use(httpsy.CSRF{
+	mux := http.NewServeMux()
+	csrf := httpsy.CSRF{
 		Secret:      "the eagle lands at midnight",
 		FormKey:     "__csrf",
-		SessionFunc: func(_ *http.Request) (string, bool) { return "", true },
-	}.Handle)
-	mux.Handle("/", s)
+		SessionFunc: func(*http.Request) (string, bool) { return "", true },
+		Expires:     24 * time.Hour,
+	}
+	mux.Handle("/", csrf.Handle(s))
 	_ = http.ListenAndServe(":8080", mux)
 }

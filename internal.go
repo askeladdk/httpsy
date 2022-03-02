@@ -1,55 +1,16 @@
 package httpsy
 
 import (
-	"bytes"
-	"crypto/rand"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
-	"sync"
 )
 
 var (
 	keyErrorHandlerCtxKey = &struct{ byte }{}
 	paramMapCtxKey        = &struct{ byte }{}
 )
-
-type errorString string
-
-func (e errorString) Error() string {
-	return string(e)
-}
-
-var bytesBufferPool = &sync.Pool{
-	New: func() interface{} {
-		return bytes.NewBuffer(nil)
-	},
-}
-
-func getBytesBuffer() *bytes.Buffer {
-	b := bytesBufferPool.Get().(*bytes.Buffer)
-	b.Reset()
-	return b
-}
-
-func putBytesBuffer(b *bytes.Buffer) {
-	bytesBufferPool.Put(b)
-}
-
-func randomNoise(b []byte) {
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
-	}
-}
-
-func bytesToASCII(b []byte) string {
-	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	for i := range b {
-		b[i] = charset[int(b[i])%len(charset)]
-	}
-	return string(b)
-}
 
 func cloneRequestURL(r *http.Request) *http.Request {
 	r2 := new(http.Request)
